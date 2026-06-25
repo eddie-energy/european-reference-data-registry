@@ -109,3 +109,15 @@ tasks.jacocoTestReport {
 }
 
 tasks.register("prepareKotlinBuildScriptModel")
+
+tasks.register<Copy>("buildFrontend") {
+    group = "build"
+    description = "Build the frontend into the Spring application for deployment"
+    dependsOn(":frontend:build")
+    from("${project.rootDir}/frontend/dist")
+    into("${project.rootDir}/s3-federator/src/main/resources/public")
+}
+
+tasks.named("processResources") {
+    dependsOn("buildFrontend")
+}

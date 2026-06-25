@@ -9,6 +9,7 @@ junit-platform = "1.11.4"
 freefair-lombok = "8.14.2"
 jsr305 = "3.0.2"
 mapstruct = "1.6.3"
+node-gradle = "7.1.0"
 nullaway = "0.12.9"
 openapi-generator = "7.21.0"
 postgresql = "42.7.8"
@@ -42,6 +43,7 @@ spring-test-impl = ["spring-boot-starter-test"]
 
 [plugins]
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "node-gradle" }
 freefair-lombok = { id = "io.freefair.lombok", version.ref = "freefair-lombok" }
 google-jib = { id = "com.google.cloud.tools.jib", version.ref = "google-jib" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }

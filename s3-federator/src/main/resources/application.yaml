@@ -30,5 +30,5 @@ spring:
 s3-federator:
   db:
     url: jdbc:postgresql://localhost:5440/s3-federator
-    username: REPLACE_ME
-    password: REPLACE_ME
+    username: s3federator
+    password: s3federator
