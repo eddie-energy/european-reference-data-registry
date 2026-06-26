@@ -1,5 +1,5 @@
-rootProject.name = "ceeds-s3-federator"
+rootProject.name = "ceeds-backend"
 
 include("api")
-include("s3-federator")
+include("backend")
 include("frontend")

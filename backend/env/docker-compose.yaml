@@ -1,0 +1,23 @@
+name: ceeds-backend
+
+services:
+  postgres:
+    image: postgres:17
+    ports:
+      - "5440:5432"
+    environment:
+      POSTGRES_DB: ${BACKEND_DB_NAME}
+      POSTGRES_USER: ${BACKEND_DB_USERNAME}
+      POSTGRES_PASSWORD: ${BACKEND_DB_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${BACKEND_DB_USERNAME} -d ${BACKEND_DB_NAME}'" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  postgres_data:

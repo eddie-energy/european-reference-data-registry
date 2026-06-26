@@ -1,0 +1,34 @@
+management:
+  endpoint:
+    health:
+      show-details: always
+  health:
+    defaults:
+      enabled: true
+
+spring:
+  profiles:
+    active: local
+  application:
+    name: backend
+  datasource:
+    url: ${backend.db.url}
+    username: ${backend.db.username}
+    password: ${backend.db.password}
+  flyway:
+    enabled: true
+    locations: 'classpath:db/backend/migration'
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: 'true'
+
+backend:
+  db:
+    url: jdbc:postgresql://localhost:5440/backend
+    username: backend
+    password: backend

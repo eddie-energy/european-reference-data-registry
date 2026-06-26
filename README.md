@@ -1,4 +1,4 @@
-# ceeds-s3-federator
+# ceeds-backend
 
 S3 federation service. Java 21 / Spring Boot backend.
 
@@ -9,20 +9,20 @@ S3 federation service. Java 21 / Spring Boot backend.
 - errorprone + NullAway, Jacoco, Jib
 
 ## Layout
-- `s3-federator/` — backend Gradle module
+- `backend/` — backend Gradle module
 - `frontend/` — Vue app (added later)
 
 ## Build & run
 ```sh
 # local Postgres
-(cd s3-federator/env && cp .env .env.local)   # fill in DB creds
-docker compose -f s3-federator/env/docker-compose.yaml up -d postgres
+(cd backend/env && cp .env .env.local)   # fill in DB creds
+docker compose -f backend/env/docker-compose.yaml up -d postgres
 
 # build
-./gradlew :s3-federator:build
+./gradlew :backend:build
 
-# run (set s3-federator.db.* or use application-local.yaml)
-./gradlew :s3-federator:bootRun
+# run (set backend.db.* or use application-local.yaml)
+./gradlew :backend:bootRun
 ```
 
 - Health: http://localhost:8080/actuator/health

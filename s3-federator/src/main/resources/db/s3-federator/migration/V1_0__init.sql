@@ -1,3 +1,0 @@
--- Initial migration placeholder.
--- Flyway requires at least one migration on the configured location.
--- Replace with the real schema as it is defined.
