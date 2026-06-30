@@ -137,6 +137,30 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+    put:
+      tags: [ ReferenceData ]
+      operationId: replaceVersionFields
+      summary: Replace the full set of fields linked to a version
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceVersionFieldsRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceDataObjectVersionDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /reference-data-objects/{id}/versions/{versionId}/fields/{fieldId}:
     delete:
@@ -229,6 +253,34 @@ components:
       type: object
       required: [ name, dataType, mandatory ]
       properties:
+        name:
+          type: string
+          minLength: 1
+        dataType:
+          $ref: '#/components/schemas/DataType'
+        mandatory:
+          type: boolean
+        nation:
+          $ref: '#/components/schemas/Nation'
+
+    ReplaceVersionFieldsRequest:
+      type: object
+      required: [ fields ]
+      properties:
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionFieldRequest'
+
+    VersionFieldRequest:
+      type: object
+      description: >-
+        Provide `id` to keep an existing field linked. Omit `id` to create a new field
+        (then name, dataType and mandatory are required).
+      properties:
+        id:
+          type: string
+          format: uuid
         name:
           type: string
           minLength: 1

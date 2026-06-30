@@ -14,6 +14,8 @@ import energy.eddie.s3.generated.model.CreateReferenceDataObjectRequest;
 import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
+import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
+import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
 import energy.eddie.s3.models.referencedata.Field;
@@ -257,6 +259,126 @@ class ReferenceDataObjectServiceTest {
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
 
         assertThatThrownBy(() -> service.unlinkField(id, versionId, UUID.randomUUID()))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void replaceVersionFields_keepsExistingAndCreatesNew() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var keptId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
+        var kept = fieldWithId(keptId);
+        version.getFields().add(kept);
+        var newField = fieldWithId(UUID.randomUUID());
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(fieldRepository.findById(keptId)).thenReturn(Optional.of(kept));
+        when(fieldRepository.save(any())).thenReturn(newField);
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        var request = new ReplaceVersionFieldsRequest()
+                .addFieldsItem(new VersionFieldRequest().id(keptId))
+                .addFieldsItem(new VersionFieldRequest()
+                        .name("volume")
+                        .dataType(energy.eddie.s3.generated.model.DataType.NUMBER)
+                        .mandatory(false));
+        service.replaceVersionFields(id, versionId, request);
+
+        assertThat(version.getFields()).containsExactly(kept, newField);
+        verify(fieldRepository, never()).delete(any());
+    }
+
+    @Test
+    void replaceVersionFields_removedOrphan_deletesField() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var removedId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
+        var removed = fieldWithId(removedId);
+        version.getFields().add(removed);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(versionRepository.countByFieldsId(removedId)).thenReturn(0L);
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.replaceVersionFields(id, versionId, new ReplaceVersionFieldsRequest());
+
+        assertThat(version.getFields()).isEmpty();
+        verify(fieldRepository).delete(removed);
+    }
+
+    @Test
+    void replaceVersionFields_removedStillReferenced_keepsField() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var removedId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var version = versionWithId(rdo, versionId, 2, PublishState.DRAFT);
+        var removed = fieldWithId(removedId);
+        version.getFields().add(removed);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(versionRepository.countByFieldsId(removedId)).thenReturn(1L);
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.replaceVersionFields(id, versionId, new ReplaceVersionFieldsRequest());
+
+        verify(fieldRepository, never()).delete(any());
+    }
+
+    @Test
+    void replaceVersionFields_unknownId_throwsNotFound() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var unknownId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(fieldRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        var request = new ReplaceVersionFieldsRequest()
+                .addFieldsItem(new VersionFieldRequest().id(unknownId));
+        assertThatThrownBy(() -> service.replaceVersionFields(id, versionId, request))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void replaceVersionFields_newFieldMissingProps_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        var request = new ReplaceVersionFieldsRequest()
+                .addFieldsItem(new VersionFieldRequest().name("incomplete"));
+        assertThatThrownBy(() -> service.replaceVersionFields(id, versionId, request))
+                .isInstanceOf(ConflictException.class);
+        verify(fieldRepository, never()).save(any());
+    }
+
+    @Test
+    void replaceVersionFields_onPublished_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() ->
+                service.replaceVersionFields(id, versionId, new ReplaceVersionFieldsRequest()))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
+    void replaceVersionFields_wrongRdo_throwsNotFound() {
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(UUID.randomUUID()), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.replaceVersionFields(
+                UUID.randomUUID(), versionId, new ReplaceVersionFieldsRequest()))
                 .isInstanceOf(NotFoundException.class);
     }
 }

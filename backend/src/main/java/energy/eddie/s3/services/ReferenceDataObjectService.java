@@ -7,6 +7,8 @@ import energy.eddie.s3.generated.model.CreateReferenceDataObjectRequest;
 import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
+import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
+import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
 import energy.eddie.s3.models.referencedata.Field;
@@ -105,6 +107,45 @@ public class ReferenceDataObjectService {
         version.getFields().add(saved);
         versionRepository.save(version);
         return mapper.toFieldDto(saved);
+    }
+
+    @Transactional
+    public ReferenceDataObjectVersionDetail replaceVersionFields(
+            UUID id, UUID versionId, ReplaceVersionFieldsRequest request) {
+        var version = findVersion(id, versionId);
+        if (version.getPublishState() == PublishState.PUBLISHED) {
+            throw new ConflictException("Cannot change fields of a published version");
+        }
+        var previousFields = List.copyOf(version.getFields());
+        var desired = request.getFields().stream()
+                .map(this::resolveField)
+                .toList();
+        version.getFields().clear();
+        version.getFields().addAll(desired);
+        versionRepository.save(version);
+        var desiredIds = desired.stream().map(Field::getId).toList();
+        for (var field : previousFields) {
+            if (!desiredIds.contains(field.getId()) && versionRepository.countByFieldsId(field.getId()) == 0) {
+                fieldRepository.delete(field);
+            }
+        }
+        return mapper.toVersionDetail(version);
+    }
+
+    private Field resolveField(VersionFieldRequest request) {
+        if (request.getId() != null) {
+            return fieldRepository.findById(request.getId())
+                    .orElseThrow(() -> new NotFoundException("Field " + request.getId() + " not found"));
+        }
+        if (request.getName() == null || request.getDataType() == null || request.getMandatory() == null) {
+            throw new ConflictException("New fields require name, dataType and mandatory");
+        }
+        var field = new Field(
+                request.getName(),
+                DataType.valueOf(request.getDataType().name()),
+                Boolean.TRUE.equals(request.getMandatory()),
+                toNation(request.getNation()));
+        return fieldRepository.save(field);
     }
 
     @Transactional
