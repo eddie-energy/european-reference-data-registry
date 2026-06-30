@@ -27,6 +27,12 @@ spring:
           lob:
             non_contextual_creation: 'true'
 
+springdoc:
+  # Spec-first: Swagger UI renders the authored contract served as a static resource,
+  # not a definition generated from the controllers.
+  swagger-ui:
+    url: /backend-api.yml
+
 backend:
   db:
     url: jdbc:postgresql://localhost:5440/backend

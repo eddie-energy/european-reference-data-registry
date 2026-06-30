@@ -5,7 +5,7 @@ flyway = "11.8.0"
 google-jib = "3.4.0"
 jackson = "2.18.2"
 jackson-databind-nullable = "0.2.6"
-junit-platform = "1.11.4"
+junit-platform = "1.12.2"
 freefair-lombok = "8.14.2"
 jsr305 = "3.0.2"
 mapstruct = "1.6.3"
@@ -13,6 +13,7 @@ node-gradle = "7.1.0"
 nullaway = "0.12.9"
 openapi-generator = "7.21.0"
 postgresql = "42.7.8"
+springdoc = "2.8.6"
 spring-boot = "3.5.0"
 spring-dependency-management = "1.1.7"
 
@@ -34,6 +35,7 @@ spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "spring-boot" }
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 [bundles]
 flyway-runtime = ["flyway-core", "flyway-database-postgresql"]

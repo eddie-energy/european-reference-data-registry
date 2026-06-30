@@ -33,6 +33,7 @@ dependencies {
     implementation(libs.bundles.jackson.impl)
 
     implementation(libs.mapstruct)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
 
     annotationProcessor(libs.mapstruct.processor)
 
@@ -100,6 +101,17 @@ tasks.named<Test>("test") {
     testLogging.events("passed")
 }
 
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests (requires a running database)."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        filter.includeTestsMatching("*IntegrationTest")
+    }
+    testLogging.events("passed")
+}
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
     reports {
@@ -109,6 +121,24 @@ tasks.jacocoTestReport {
 }
 
 tasks.register("prepareKotlinBuildScriptModel")
+
+// Serve the authored OpenAPI contract as a static resource so Swagger UI renders the
+// real spec (single source of truth) instead of one re-derived from controllers.
+val copyApiSpec = tasks.register<Copy>("copyApiSpec") {
+    description = "Copies the OpenAPI contract into static resources for Swagger UI."
+    from("${project.rootDir}/api-specs") {
+        include("*.yml")
+    }
+    into(layout.buildDirectory.dir("generated-resources/static"))
+}
+
+sourceSets.named("main") {
+    resources.srcDir(layout.buildDirectory.dir("generated-resources"))
+}
+
+tasks.named("processResources") {
+    dependsOn(copyApiSpec)
+}
 
 tasks.register<Copy>("buildFrontend") {
     group = "build"
