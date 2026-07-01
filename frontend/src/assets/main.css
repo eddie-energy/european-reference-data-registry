@@ -1,0 +1,31 @@
+:root {
+  /* Spacings */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.25rem;
+  --spacing-xlg: 1.5rem;
+  --spacing-xxl: 2rem;
+  --default-border-radius: 0.75rem;
+
+  --theme-transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+
+  /* Theme Color */
+  --teal: #1d8279;
+  --turquiese: #40b8b2;
+  --turquiese-light: rgba(from var(--turquiese) r g b / 0.25);
+  --lavender: #6c6fa9;
+  --lime: #dedb2e;
+  --peach: #f3975c;
+  --dark: #3b3b3a;
+  --light: #ffffff;
+  --error: #c50f0f;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+svg {
+  width: 1rem;
+  height: 1rem;
+}

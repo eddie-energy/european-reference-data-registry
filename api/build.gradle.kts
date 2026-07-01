@@ -36,6 +36,7 @@ tasks.register<GenerateTask>("generateServerApi") {
     modelPackage = "energy.eddie.s3.generated.model"
     configOptions = mapOf(
         "interfaceOnly" to "true",
+        "requestMappingMode" to "api_interface",
         "useTags" to "true",
         "useSpringBoot3" to "true",
         "openApiNullable" to "false",

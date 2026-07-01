@@ -38,3 +38,7 @@ backend:
     url: jdbc:postgresql://localhost:5440/backend
     username: backend
     password: backend
+
+app:
+  cors:
+    allowed-origins:

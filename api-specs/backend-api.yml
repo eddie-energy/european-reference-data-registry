@@ -5,9 +5,9 @@ info:
   description: Spec-first API for the CEEDS S3 Federator service.
 
 servers:
-  - url: /
+  - url: /api
     description: Default API base path (relative to current host)
-  - url: http://localhost:8080
+  - url: http://localhost:8080/api
     description: Local development server
 
 tags:

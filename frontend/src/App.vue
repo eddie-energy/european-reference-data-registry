@@ -1,11 +1,41 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import SidebarNavigation from './components/SidebarNavigation.vue'
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div class="content-grid">
+    <SidebarNavigation class="sticky sidebar" />
+    <RouterView v-slot="{ Component }" class="main-default">
+      <Transition mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </RouterView>
+  </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.sidebar {
+  grid-row: span 2;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+</style>
