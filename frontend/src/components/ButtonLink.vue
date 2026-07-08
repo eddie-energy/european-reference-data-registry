@@ -88,4 +88,15 @@ const {
   --button-color: var(--error);
   border-color: var(--button-color);
 }
+
+.tertiary {
+  --button-bg-color: transparent;
+  --button-color: var(--lavender);
+  border-color: transparent;
+}
+
+.tertiary:hover {
+  color: var(--light);
+  background-color: var(--lavender);
+}
 </style>

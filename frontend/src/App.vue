@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import AlertToastList from './components/AlertToastList.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import SidebarNavigation from './components/SidebarNavigation.vue'
 </script>
 
 <template>
+  <ConfirmDialog />
+  <AlertToastList />
   <div class="content-grid">
     <SidebarNavigation class="sticky sidebar" />
     <RouterView v-slot="{ Component }" class="main-default">
@@ -27,6 +31,10 @@ import SidebarNavigation from './components/SidebarNavigation.vue'
 .content-grid {
   display: grid;
   grid-template-columns: auto 1fr;
+}
+
+.main-default {
+  min-width: 0;
 }
 
 .sidebar {

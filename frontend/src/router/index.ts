@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import ReferenceDataObjectView from '@/views/ReferenceDataObjectView.vue'
 import CreateReferenceDataObjectView from '@/views/CreateReferenceDataObjectView.vue'
+import { userRole } from '@/stores/userInfo'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,6 +16,11 @@ const router = createRouter({
       path: '/reference-data-objects/create',
       name: 'reference-data-object-create',
       component: CreateReferenceDataObjectView,
+      beforeEnter: () => {
+        if (userRole.value !== 'ceedsEntity') {
+          return { name: 'dashboard' }
+        }
+      },
     },
     {
       path: '/reference-data-objects/:id',

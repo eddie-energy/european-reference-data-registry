@@ -3,7 +3,7 @@ import { userRole } from '@/stores/userInfo'
 
 const swaggerUrl = `${import.meta.env.VITE_BASE_URL}/swagger-ui.html`
 
-const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntitiy', 'dataspaceFacilitator']
+const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntity', 'dataspaceFacilitator']
 </script>
 
 <template>
@@ -55,17 +55,29 @@ const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntitiy', 'dataspac
 nav {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-xs);
 }
 
 nav a {
+  display: block;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--pill-radius);
   color: var(--dark);
   text-decoration: none;
   font-size: 1rem;
+  font-weight: 500;
+  transition: var(--theme-transition);
+}
+
+nav a:hover {
+  background-color: var(--teal-tint-bg);
+  color: var(--teal-tint-text);
 }
 
 nav a.router-link-active {
-  font-weight: 700;
+  background-color: var(--teal);
+  color: var(--light);
+  font-weight: 600;
 }
 
 .account {
@@ -73,6 +85,8 @@ nav a.router-link-active {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid #e4e4e4;
 }
 
 .account-label {
@@ -109,10 +123,23 @@ nav a.router-link-active {
   cursor: pointer;
 }
 
+#userSelect:focus-visible {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-tint-bg);
+}
+
 .sign-out {
   color: var(--dark);
+  opacity: 0.7;
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
+  transition: var(--theme-transition);
+}
+
+.sign-out:hover {
+  color: var(--error);
+  opacity: 1;
 }
 </style>
