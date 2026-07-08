@@ -3,22 +3,45 @@ import ReferenceObjectCard from '@/components/ReferenceObjectCard.vue'
 import 'vue3-carousel/carousel.css'
 import { referenceDataObjects } from '@/stores/referenceDataObject'
 import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
+import ButtonLink from '@/components/ButtonLink.vue'
+import { userRole } from '@/stores/userInfo'
+import { computed } from 'vue'
 
 const carouselConfig = {
   itemsToShow: 3,
   gap: 64,
   wrapAround: true,
 }
+
+const visibleReferenceDataObjects = computed(() =>
+  userRole.value === 'ceedsEntity'
+    ? referenceDataObjects.value
+    : referenceDataObjects.value?.filter((object) =>
+        object.versions.some((version) => version.publishState === 'PUBLISHED'),
+      ),
+)
 </script>
 
 <template>
   <main class="dashboard">
     <h1>S3 - CEEDS Reference Data Registry</h1>
     <section>
-      <h2 class="carousel-title">Reference Data Entries</h2>
+      <header class="header">
+        <div class="section-heading">
+          <span class="badge badge-teal">Reference Data</span>
+          <h2 class="carousel-title">Reference Data Entries</h2>
+        </div>
+        <ButtonLink
+          v-if="userRole === 'ceedsEntity'"
+          component="RouterLink"
+          to="/reference-data-objects/create"
+        >
+          Create new
+        </ButtonLink>
+      </header>
       <div class="carousel-wrapper">
         <Carousel v-bind="carouselConfig">
-          <Slide v-for="object in referenceDataObjects" :key="object.id">
+          <Slide v-for="object in visibleReferenceDataObjects" :key="object.id">
             <ReferenceObjectCard v-bind="object" />
           </Slide>
           <template #addons>
@@ -29,7 +52,10 @@ const carouselConfig = {
       </div>
     </section>
     <section>
-      <h2 class="carousel-title">Application Programmable Interface (API)</h2>
+      <div class="section-heading">
+        <span class="badge badge-teal">Developers</span>
+        <h2 class="carousel-title">Application Programmable Interface (API)</h2>
+      </div>
       <div></div>
     </section>
   </main>
@@ -37,7 +63,12 @@ const carouselConfig = {
 
 <style scoped>
 .dashboard {
-  padding: var(--spacing-xxl) var(--spacing-xxl) 0;
+  padding-block: var(--spacing-xlg);
+}
+.header {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
 }
 
 h1 {
@@ -51,17 +82,34 @@ section {
 }
 
 section h2 {
-  margin: 0 0 var(--spacing-lg);
+  margin: 0;
   font-size: 1.375rem;
-  font-weight: 400;
+  font-weight: 700;
 }
 
-.carousel-title {
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
   padding-inline-start: calc(var(--spacing-xxl) + var(--spacing-sm));
 }
 
+.header .section-heading {
+  margin-bottom: 0;
+}
+
 .carousel-wrapper {
+  width: 100%;
+  max-width: 100%;
   padding-inline: var(--spacing-xxl);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+:deep(.carousel) {
+  width: 100%;
+  max-width: 100%;
 }
 
 :deep(.carousel__slide) {

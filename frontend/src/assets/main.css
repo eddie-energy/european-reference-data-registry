@@ -23,10 +23,165 @@
   --error: #c50f0f;
   --primary: var(--dark);
 
+  /* Surfaces */
+  --surface-alt: #f7f7f5;
+
+  /* Shadows */
+  --card-shadow: 0 2px 6px rgba(59, 59, 58, 0.06), 0 10px 24px rgba(59, 59, 58, 0.08);
+  --card-shadow-hover: 0 4px 10px rgba(59, 59, 58, 0.08), 0 16px 32px rgba(59, 59, 58, 0.12);
+
+  /* Radii */
+  --pill-radius: 1.5rem;
+  --chip-radius: 999px;
+  --icon-chip-radius: 0.625rem;
+
+  /* Accessible tint backgrounds + darkened on-tint text (for badges) */
+  --teal-tint-bg: color-mix(in srgb, var(--teal) 10%, white);
+  --teal-tint-text: color-mix(in srgb, var(--teal) 85%, black);
+  --lavender-tint-bg: color-mix(in srgb, var(--lavender) 10%, white);
+  --lavender-tint-text: color-mix(in srgb, var(--lavender) 85%, black);
+
+  /* Pre-resolved accessible text color for each brand color used as a solid fill */
+  --on-teal: var(--light);
+  --on-lavender: var(--light);
+  --on-turquiese: var(--dark);
+  --on-lime: var(--dark);
+  --on-peach: var(--dark);
+
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Toast Colors */
+  --toast-danger: var(--error);
+  --toast-succes: #238739;
+  --toast-info: var(--base-primary);
+  --toast-neutral: var(--background-color);
 }
 
 svg {
   width: 1rem;
   height: 1rem;
+}
+
+/* Eyebrow badge — soft pill label above a heading */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--chip-radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-teal {
+  background-color: var(--teal-tint-bg);
+  color: var(--teal-tint-text);
+}
+
+.badge-lavender {
+  background-color: var(--lavender-tint-bg);
+  color: var(--lavender-tint-text);
+}
+
+/* Status chip — solid-fill tag, e.g. DRAFT / PUBLISHED */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing);
+  border-radius: var(--chip-radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.chip-draft {
+  background-color: var(--peach);
+  color: var(--on-peach);
+}
+
+.chip-published {
+  background-color: var(--teal);
+  color: var(--on-teal);
+}
+
+.chip-changes {
+  background-color: var(--lavender);
+  color: var(--on-lavender);
+}
+
+/* Icon chip — small colored square accent on cards; color set by .accent-* */
+.icon-chip {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: var(--icon-chip-radius);
+}
+
+.accent-teal {
+  background-color: var(--teal);
+  color: var(--on-teal);
+}
+
+.accent-turquiese {
+  background-color: var(--turquiese);
+  color: var(--on-turquiese);
+}
+
+.accent-lavender {
+  background-color: var(--lavender);
+  color: var(--on-lavender);
+}
+
+.accent-lime {
+  background-color: var(--lime);
+  color: var(--on-lime);
+}
+
+.accent-peach {
+  background-color: var(--peach);
+  color: var(--on-peach);
+}
+
+/* Global form primitives */
+input[type='text'],
+input[type='number'],
+input:not([type]),
+select,
+textarea {
+  box-sizing: border-box;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid #d0d0d0;
+  border-radius: var(--spacing-sm);
+  background-color: var(--light);
+  color: var(--dark);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition:
+    var(--theme-transition),
+    box-shadow 0.2s ease;
+}
+
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+input[type='text']:focus-visible,
+input[type='number']:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-tint-bg);
+}
+
+input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--teal);
+  cursor: pointer;
 }
