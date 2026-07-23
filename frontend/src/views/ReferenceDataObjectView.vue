@@ -9,9 +9,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { userRole } from '@/stores/userInfo'
 import { createVersion, publishVersion, deleteReferenceDataObject, unlinkField } from '@/api'
 import FieldForm from '@/components/FieldForm.vue'
+import EntryTable from '@/components/EntryTable.vue'
 import ButtonLink from '@/components/ButtonLink.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
+import type { components } from '@/schema'
 
 const { id } = defineProps<{ id: string }>()
 const route = useRoute()
@@ -30,11 +32,13 @@ const draftVersion = computed(() => {
   return lastVersion?.publishState === 'DRAFT' ? lastVersion : undefined
 })
 
-const browseVersions = computed(() => {
+const browseVersion = computed(() => {
   const versions = referenceDataObject.value?.versions ?? []
-  return userRole.value === 'ceedsEntity'
-    ? versions
-    : versions.filter((version) => version.publishState === 'PUBLISHED')
+  const visible =
+    userRole.value === 'ceedsEntity'
+      ? versions
+      : versions.filter((version) => version.publishState === 'PUBLISHED')
+  return visible[visible.length - 1]
 })
 
 const startNewVersion = async () => {
@@ -58,14 +62,11 @@ const isDraftMode = computed(() =>
 
 const canDeleteObject = computed(() => !hasFields.value || isDraftMode.value)
 
-const fieldUsedElsewhere = (fieldId: string) =>
-  (referenceDataObject.value?.versions ?? []).some(
-    (version) =>
-      version.id !== draftVersion.value?.id && version.fields.some((field) => field.id === fieldId),
-  )
+const optionNames = (field: components['schemas']['FieldDto']) =>
+  field.options.map((option) => option.name).join(', ')
 
 const deleteField = async (fieldId: string, fieldName: string) => {
-  if (!draftVersion.value || fieldUsedElsewhere(fieldId)) return
+  if (!draftVersion.value) return
   if (!(await confirm('Delete field', `Delete "${fieldName}"? This cannot be undone.`))) return
   const { error } = await unlinkField(id, draftVersion.value.id, fieldId)
   if (error) {
@@ -154,24 +155,12 @@ watch(userRole, () => {
       </nav>
 
       <section v-if="activeTab === 'browse'">
-        <section v-for="version in browseVersions" :key="version.id">
-          <h2 class="version-heading">
-            Version {{ version.versionCode }}
-            <span
-              class="chip"
-              :class="version.publishState === 'PUBLISHED' ? 'chip-published' : 'chip-draft'"
-            >
-              {{ version.publishState }}
-            </span>
-          </h2>
-          <ul>
-            <li v-for="field in version.fields" :key="field.id">
-              {{ field.name }} — {{ field.dataType }}
-              <template v-if="field.mandatory">(mandatory)</template>
-              <template v-if="field.nation">— {{ field.nation }}</template>
-            </li>
-          </ul>
-        </section>
+        <EntryTable
+          v-if="browseVersion"
+          :id
+          :version="browseVersion"
+          :editable="userRole === 'ceedsEntity'"
+        />
       </section>
 
       <section v-else-if="activeTab === 'api' || activeTab === 'process'">
@@ -194,12 +183,11 @@ watch(userRole, () => {
           <ul class="draft-fields">
             <li v-for="field in draftVersion.fields" :key="field.id">
               {{ field.name }} — {{ field.dataType }}
+              <template v-if="field.options.length">({{ optionNames(field) }})</template>
               <ButtonLink
                 component="button"
                 buttonStyle="error-secondary"
                 size="compact"
-                :disabled="fieldUsedElsewhere(field.id)"
-                :title="fieldUsedElsewhere(field.id) ? 'Field is used by another version' : undefined"
                 @click="deleteField(field.id, field.name)"
               >
                 Delete
@@ -212,7 +200,12 @@ watch(userRole, () => {
           </ButtonLink>
         </template>
         <template v-else>
-          <ButtonLink component="button" buttonStyle="secondary" size="compact" @click="startNewVersion">
+          <ButtonLink
+            component="button"
+            buttonStyle="secondary"
+            size="compact"
+            @click="startNewVersion"
+          >
             Start new version to add fields
           </ButtonLink>
         </template>
@@ -266,12 +259,6 @@ watch(userRole, () => {
   background-color: var(--lavender);
   color: var(--light);
   font-weight: 600;
-}
-
-.version-heading {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
 }
 
 .draft-fields li {

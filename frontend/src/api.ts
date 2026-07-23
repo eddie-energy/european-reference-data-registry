@@ -127,3 +127,63 @@ export async function unlinkField(
     },
   )
 }
+
+export async function listEntries(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+): Promise<{
+  data?: components['schemas']['EntryDto'][]
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).GET('/reference-data-objects/{id}/versions/{versionId}/entries', {
+    params: { path: { id, versionId } },
+  })
+}
+
+export async function createEntry(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+  body: components['schemas']['UpsertEntryRequest'],
+): Promise<{
+  data?: components['schemas']['EntryDto']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).POST('/reference-data-objects/{id}/versions/{versionId}/entries', {
+    params: { path: { id, versionId } },
+    body,
+  })
+}
+
+export async function updateEntry(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+  entryId: components['parameters']['EntryId'],
+  body: components['schemas']['UpsertEntryRequest'],
+): Promise<{
+  data?: components['schemas']['EntryDto']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).PUT(
+    '/reference-data-objects/{id}/versions/{versionId}/entries/{entryId}',
+    {
+      params: { path: { id, versionId, entryId } },
+      body,
+    },
+  )
+}
+
+export async function deleteEntry(
+  id: components['parameters']['ReferenceDataObjectId'],
+  entryId: components['parameters']['EntryId'],
+): Promise<{
+  data?: never
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).DELETE('/reference-data-objects/{id}/entries/{entryId}', {
+    params: { path: { id, entryId } },
+  })
+}

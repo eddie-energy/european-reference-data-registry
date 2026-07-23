@@ -20,15 +20,39 @@ const name = ref('')
 const dataType = ref<components['schemas']['DataType']>('TEXT')
 const mandatory = ref(false)
 const nation = ref<components['schemas']['Nation'] | ''>('')
+const options = ref<string[]>([])
+const optionDraft = ref('')
 const errorMessage = ref('')
+
+const addOption = () => {
+  const option = optionDraft.value.trim()
+  if (!option) return
+  if (options.value.includes(option)) {
+    errorMessage.value = `Option "${option}" already exists`
+    return
+  }
+  errorMessage.value = ''
+  options.value.push(option)
+  optionDraft.value = ''
+}
+
+const removeOption = (option: string) => {
+  options.value = options.value.filter((existing) => existing !== option)
+}
 
 const submit = async () => {
   errorMessage.value = ''
+  if (dataType.value === 'ENUM' && options.value.length === 0) {
+    errorMessage.value = 'Enum fields require at least one option'
+    return
+  }
+
   const { data, error } = await createField(id, versionId, {
     name: name.value,
     dataType: dataType.value,
     mandatory: mandatory.value,
     ...(nation.value && { nation: nation.value }),
+    ...(dataType.value === 'ENUM' && { options: options.value }),
   })
 
   if (!data) {
@@ -42,6 +66,8 @@ const submit = async () => {
   dataType.value = 'TEXT'
   mandatory.value = false
   nation.value = ''
+  options.value = []
+  optionDraft.value = ''
 }
 </script>
 
@@ -57,8 +83,40 @@ const submit = async () => {
         <option value="TEXT">Text</option>
         <option value="NUMBER">Number</option>
         <option value="DATE">Date</option>
+        <option value="ENUM">Enum</option>
       </select>
     </label>
+    <div v-if="dataType === 'ENUM'" class="options">
+      <span class="option-input">
+        <label>
+          Options
+          <input v-model="optionDraft" type="text" @keydown.enter.prevent="addOption" />
+        </label>
+        <ButtonLink
+          component="button"
+          type="button"
+          buttonStyle="secondary"
+          size="compact"
+          @click="addOption"
+        >
+          Add option
+        </ButtonLink>
+      </span>
+      <ul v-if="options.length" class="option-list">
+        <li v-for="option in options" :key="option">
+          {{ option }}
+          <ButtonLink
+            component="button"
+            type="button"
+            buttonStyle="error-secondary"
+            size="compact"
+            @click="removeOption(option)"
+          >
+            Remove
+          </ButtonLink>
+        </li>
+      </ul>
+    </div>
     <label>
       Nation
       <select v-model="nation">
@@ -97,6 +155,36 @@ label {
 .checkbox {
   flex-direction: row;
   align-items: center;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex-basis: 100%;
+}
+
+.option-input {
+  display: flex;
+  align-items: end;
+  gap: var(--spacing-md);
+}
+
+.option-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.option-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .error {
