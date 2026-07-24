@@ -1,0 +1,2 @@
+ALTER TABLE entry
+    ADD COLUMN nation VARCHAR(3) NULL;

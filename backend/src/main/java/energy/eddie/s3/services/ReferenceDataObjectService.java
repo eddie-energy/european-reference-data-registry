@@ -16,6 +16,8 @@ import energy.eddie.s3.models.referencedata.Nation;
 import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
+import energy.eddie.s3.repositories.EntryRepository;
+import energy.eddie.s3.repositories.EntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
@@ -31,16 +33,22 @@ public class ReferenceDataObjectService {
     private final ReferenceDataObjectRepository referenceDataObjectRepository;
     private final ReferenceDataObjectVersionRepository versionRepository;
     private final FieldRepository fieldRepository;
+    private final EntryRepository entryRepository;
+    private final EntryValueRepository entryValueRepository;
     private final ReferenceDataObjectMapper mapper;
 
     public ReferenceDataObjectService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
             ReferenceDataObjectVersionRepository versionRepository,
             FieldRepository fieldRepository,
+            EntryRepository entryRepository,
+            EntryValueRepository entryValueRepository,
             ReferenceDataObjectMapper mapper) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
         this.fieldRepository = fieldRepository;
+        this.entryRepository = entryRepository;
+        this.entryValueRepository = entryValueRepository;
         this.mapper = mapper;
     }
 
@@ -72,6 +80,9 @@ public class ReferenceDataObjectService {
         if (hasFields) {
             throw new ConflictException("Reference data object has fields and cannot be deleted");
         }
+        if (entryRepository.existsByReferenceDataObjectId(id)) {
+            throw new ConflictException("Reference data object has entries and cannot be deleted");
+        }
         referenceDataObjectRepository.delete(rdo);
     }
 
@@ -98,12 +109,12 @@ public class ReferenceDataObjectService {
         if (version.getPublishState() == PublishState.PUBLISHED) {
             throw new ConflictException("Cannot add fields to a published version");
         }
-        var field = new Field(
+        var saved = newField(
                 request.getName(),
-                DataType.valueOf(request.getDataType().name()),
-                Boolean.TRUE.equals(request.getMandatory()),
-                toNation(request.getNation()));
-        var saved = fieldRepository.save(field);
+                request.getDataType(),
+                request.getMandatory(),
+                request.getNation(),
+                request.getOptions());
         version.getFields().add(saved);
         versionRepository.save(version);
         return mapper.toFieldDto(saved);
@@ -125,7 +136,7 @@ public class ReferenceDataObjectService {
         versionRepository.save(version);
         var desiredIds = desired.stream().map(Field::getId).toList();
         for (var field : previousFields) {
-            if (!desiredIds.contains(field.getId()) && versionRepository.countByFieldsId(field.getId()) == 0) {
+            if (!desiredIds.contains(field.getId()) && isFieldUnused(field.getId())) {
                 fieldRepository.delete(field);
             }
         }
@@ -140,12 +151,46 @@ public class ReferenceDataObjectService {
         if (request.getName() == null || request.getDataType() == null || request.getMandatory() == null) {
             throw new ConflictException("New fields require name, dataType and mandatory");
         }
-        var field = new Field(
+        return newField(
                 request.getName(),
-                DataType.valueOf(request.getDataType().name()),
-                Boolean.TRUE.equals(request.getMandatory()),
-                toNation(request.getNation()));
+                request.getDataType(),
+                request.getMandatory(),
+                request.getNation(),
+                request.getOptions());
+    }
+
+    private Field newField(
+            String name,
+            energy.eddie.s3.generated.model.DataType dataType,
+            @Nullable Boolean mandatory,
+            @Nullable energy.eddie.s3.generated.model.Nation nation,
+            @Nullable List<String> options) {
+        var type = DataType.valueOf(dataType.name());
+        validateOptions(type, options);
+        var field = new Field(name, type, Boolean.TRUE.equals(mandatory), toNation(nation));
+        if (options != null) {
+            options.forEach(field::addOption);
+        }
         return fieldRepository.save(field);
+    }
+
+    private static void validateOptions(DataType dataType, @Nullable List<String> options) {
+        if (dataType != DataType.ENUM) {
+            if (options != null && !options.isEmpty()) {
+                throw new ConflictException("Only enum fields can define options");
+            }
+            return;
+        }
+        if (options == null || options.isEmpty()) {
+            throw new ConflictException("Enum fields require at least one option");
+        }
+        var distinct = options.stream()
+                .filter(option -> !option.isBlank())
+                .distinct()
+                .count();
+        if (distinct != options.size()) {
+            throw new ConflictException("Enum options must be unique and non-blank");
+        }
     }
 
     @Transactional
@@ -160,9 +205,17 @@ public class ReferenceDataObjectService {
                 .orElseThrow(() -> new NotFoundException("Field " + fieldId + " is not linked to version " + versionId));
         version.getFields().remove(field);
         versionRepository.save(version);
-        if (versionRepository.countByFieldsId(fieldId) == 0) {
+        if (isFieldUnused(fieldId)) {
             fieldRepository.delete(field);
         }
+    }
+
+    /**
+     * A field may only be deleted once no version links it and no entry holds a value for it,
+     * otherwise stored entry values would be lost (and the foreign key would reject the delete).
+     */
+    private boolean isFieldUnused(UUID fieldId) {
+        return versionRepository.countByFieldsId(fieldId) == 0 && !entryValueRepository.existsByFieldId(fieldId);
     }
 
     private ReferenceDataObject findReferenceDataObject(UUID id) {

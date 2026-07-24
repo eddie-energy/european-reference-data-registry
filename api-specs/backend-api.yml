@@ -13,6 +13,8 @@ servers:
 tags:
   - name: ReferenceData
     description: Manage reference data objects, their versions and fields
+  - name: Entries
+    description: Manage the data entries of a reference data object
 
 paths:
   /reference-data-objects:
@@ -184,6 +186,98 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /reference-data-objects/{id}/versions/{versionId}/entries:
+    get:
+      tags: [ Entries ]
+      operationId: listEntries
+      summary: List the entries of a reference data object projected onto a version
+      description: >-
+        Entries belong to the reference data object, not to a single version. The response
+        contains one value per field linked to the given version; values of fields that are
+        not linked to this version are omitted but remain stored.
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntryDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Entries ]
+      operationId: createEntry
+      summary: Create an entry using the field set of the given version
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertEntryRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /reference-data-objects/{id}/versions/{versionId}/entries/{entryId}:
+    put:
+      tags: [ Entries ]
+      operationId: updateEntry
+      summary: Replace the values an entry holds for the fields of the given version
+      description: >-
+        Only fields linked to the given version are touched. Omitting a field or sending it
+        without a value deletes the stored value for that field.
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+        - $ref: '#/components/parameters/EntryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertEntryRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /reference-data-objects/{id}/entries/{entryId}:
+    delete:
+      tags: [ Entries ]
+      operationId: deleteEntry
+      summary: Delete an entry and all of its values
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/EntryId'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   parameters:
     ReferenceDataObjectId:
@@ -195,6 +289,13 @@ components:
         format: uuid
     VersionId:
       name: versionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EntryId:
+      name: entryId
       in: path
       required: true
       schema:
@@ -218,7 +319,7 @@ components:
   schemas:
     DataType:
       type: string
-      enum: [ NUMBER, TEXT, DATE ]
+      enum: [ NUMBER, TEXT, DATE, ENUM ]
 
     PublishState:
       type: string
@@ -249,8 +350,24 @@ components:
           type: string
           minLength: 1
 
+    EnumOptionDto:
+      type: object
+      required: [ id, name, createdAt ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
     CreateFieldRequest:
       type: object
+      description: >-
+        `options` is required (and only allowed) when `dataType` is `ENUM`.
+        Option names must be non-blank and unique within the field.
       required: [ name, dataType, mandatory ]
       properties:
         name:
@@ -262,6 +379,11 @@ components:
           type: boolean
         nation:
           $ref: '#/components/schemas/Nation'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
 
     ReplaceVersionFieldsRequest:
       type: object
@@ -276,7 +398,9 @@ components:
       type: object
       description: >-
         Provide `id` to keep an existing field linked. Omit `id` to create a new field
-        (then name, dataType and mandatory are required).
+        (then name, dataType and mandatory are required). `options` is required (and only
+        allowed) when `dataType` is `ENUM`; option names must be non-blank and unique
+        within the field.
       properties:
         id:
           type: string
@@ -290,10 +414,15 @@ components:
           type: boolean
         nation:
           $ref: '#/components/schemas/Nation'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
 
     FieldDto:
       type: object
-      required: [ id, name, dataType, mandatory, createdAt ]
+      required: [ id, name, dataType, mandatory, createdAt, options ]
       properties:
         id:
           type: string
@@ -309,6 +438,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        options:
+          type: array
+          description: Empty for every data type except `ENUM`.
+          items:
+            $ref: '#/components/schemas/EnumOptionDto'
 
     ReferenceDataObjectVersionDetail:
       type: object
@@ -329,6 +463,63 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FieldDto'
+
+    EntryValueDto:
+      type: object
+      description: >-
+        Exactly one value property may be set and it must match the `dataType` of the field:
+        TEXT -> `textValue`, NUMBER -> `numberValue`, DATE -> `dateValue`, ENUM -> `enumOptionId`.
+        All value properties absent means the entry has no value for that field.
+      required: [ fieldId ]
+      properties:
+        fieldId:
+          type: string
+          format: uuid
+        textValue:
+          type: string
+        numberValue:
+          type: number
+        dateValue:
+          type: string
+          format: date
+        enumOptionId:
+          type: string
+          format: uuid
+
+    UpsertEntryRequest:
+      type: object
+      required: [ nation, values ]
+      properties:
+        nation:
+          $ref: '#/components/schemas/Nation'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntryValueDto'
+
+    EntryDto:
+      type: object
+      required: [ id, createdAt, updatedAt, complete, values ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        nation:
+          $ref: '#/components/schemas/Nation'
+        complete:
+          type: boolean
+          description: False when a mandatory field of the requested version has no value.
+        values:
+          type: array
+          description: One item per field linked to the requested version.
+          items:
+            $ref: '#/components/schemas/EntryValueDto'
 
     ReferenceDataObjectDetail:
       type: object
