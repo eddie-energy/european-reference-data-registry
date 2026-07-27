@@ -96,6 +96,21 @@ export async function replaceVersionFields(
   })
 }
 
+export async function reorderFields(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+  fieldIds: string[],
+): Promise<{
+  data?: components['schemas']['ReferenceDataObjectVersionDetail']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).PUT('/reference-data-objects/{id}/versions/{versionId}/fields/order', {
+    params: { path: { id, versionId } },
+    body: { fieldIds },
+  })
+}
+
 export async function createField(
   id: components['parameters']['ReferenceDataObjectId'],
   versionId: components['parameters']['VersionId'],

@@ -580,4 +580,68 @@ class ReferenceDataObjectServiceTest {
                 UUID.randomUUID(), versionId, new ReplaceVersionFieldsRequest()))
                 .isInstanceOf(NotFoundException.class);
     }
+
+    @Test
+    void reorderFields_onDraft_reordersFieldsInMemory() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        var fieldA = fieldWithId(UUID.randomUUID());
+        var fieldB = fieldWithId(UUID.randomUUID());
+        var fieldC = fieldWithId(UUID.randomUUID());
+        version.getFields().addAll(List.of(fieldA, fieldB, fieldC));
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.reorderFields(id, versionId, List.of(fieldC.getId(), fieldA.getId(), fieldB.getId()));
+
+        assertThat(version.getFields()).containsExactly(fieldC, fieldA, fieldB);
+        verify(versionRepository).save(version);
+    }
+
+    @Test
+    void reorderFields_onPublished_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
+        var field = fieldWithId(UUID.randomUUID());
+        version.getFields().add(field);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.reorderFields(id, versionId, List.of(field.getId())))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
+    void reorderFields_notAPermutation_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        var fieldA = fieldWithId(UUID.randomUUID());
+        var fieldB = fieldWithId(UUID.randomUUID());
+        version.getFields().addAll(List.of(fieldA, fieldB));
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.reorderFields(id, versionId, List.of(fieldA.getId())))
+                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.reorderFields(
+                id, versionId, List.of(fieldA.getId(), fieldA.getId())))
+                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.reorderFields(
+                id, versionId, List.of(fieldA.getId(), UUID.randomUUID())))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
+    void reorderFields_wrongRdo_throwsNotFound() {
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(UUID.randomUUID()), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.reorderFields(UUID.randomUUID(), versionId, List.of()))
+                .isInstanceOf(NotFoundException.class);
+    }
 }

@@ -12,5 +12,8 @@ public interface ReferenceDataObjectVersionRepository extends JpaRepository<Refe
     Optional<ReferenceDataObjectVersion> findFirstByReferenceDataObjectIdOrderByVersionCodeDesc(
             UUID referenceDataObjectId);
 
+    List<ReferenceDataObjectVersion> findByReferenceDataObjectIdOrderByVersionCodeDesc(
+            UUID referenceDataObjectId);
+
     long countByFieldsId(UUID fieldId);
 }

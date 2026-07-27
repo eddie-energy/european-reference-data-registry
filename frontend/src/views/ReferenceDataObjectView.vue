@@ -1,36 +1,18 @@
 <script lang="ts" setup>
-import {
-  referenceDataObject,
-  updateReferenceDataObject,
-  updateReferenceDataObjects,
-} from '@/stores/referenceDataObject'
+import { referenceDataObject, updateReferenceDataObject } from '@/stores/referenceDataObject'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { userRole } from '@/stores/userInfo'
-import { createVersion, publishVersion, deleteReferenceDataObject, unlinkField } from '@/api'
-import FieldForm from '@/components/FieldForm.vue'
 import EntryTable from '@/components/EntryTable.vue'
-import ButtonLink from '@/components/ButtonLink.vue'
-import { useConfirmDialog } from '@/composables/confirm-dialog'
-import useToast from '@/composables/useToast'
-import type { components } from '@/schema'
+import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
 
 const { id } = defineProps<{ id: string }>()
 const route = useRoute()
-const router = useRouter()
-const { confirm } = useConfirmDialog()
-const { danger, success } = useToast()
 
 const load = () => updateReferenceDataObject(id)
 
 onMounted(load)
 watch(() => id, load)
-
-const draftVersion = computed(() => {
-  const versions = referenceDataObject.value?.versions
-  const lastVersion = versions?.[versions.length - 1]
-  return lastVersion?.publishState === 'DRAFT' ? lastVersion : undefined
-})
 
 const browseVersion = computed(() => {
   const versions = referenceDataObject.value?.versions ?? []
@@ -40,70 +22,6 @@ const browseVersion = computed(() => {
       : versions.filter((version) => version.publishState === 'PUBLISHED')
   return visible[visible.length - 1]
 })
-
-const startNewVersion = async () => {
-  await createVersion(id)
-  await load()
-}
-
-const publish = async () => {
-  if (!draftVersion.value) return
-  await publishVersion(id, draftVersion.value.id)
-  await load()
-}
-
-const hasFields = computed(() =>
-  (referenceDataObject.value?.versions ?? []).some((version) => version.fields.length > 0),
-)
-
-const isDraftMode = computed(() =>
-  (referenceDataObject.value?.versions ?? []).every((version) => version.publishState === 'DRAFT'),
-)
-
-const canDeleteObject = computed(() => !hasFields.value || isDraftMode.value)
-
-const optionNames = (field: components['schemas']['FieldDto']) =>
-  field.options.map((option) => option.name).join(', ')
-
-const deleteField = async (fieldId: string, fieldName: string) => {
-  if (!draftVersion.value) return
-  if (!(await confirm('Delete field', `Delete "${fieldName}"? This cannot be undone.`))) return
-  const { error } = await unlinkField(id, draftVersion.value.id, fieldId)
-  if (error) {
-    danger(error.message ?? 'Failed to delete field')
-    return
-  }
-  success(`Field "${fieldName}" deleted`)
-  await load()
-}
-
-const deleteObject = async () => {
-  if (!canDeleteObject.value) return
-  const objectName = referenceDataObject.value?.name
-  const message = hasFields.value
-    ? 'Delete this reference data object? All of its fields will also be deleted. This cannot be undone.'
-    : 'Delete this reference data object? This cannot be undone.'
-  if (!(await confirm('Delete reference data object', message))) return
-
-  for (const version of referenceDataObject.value?.versions ?? []) {
-    for (const field of version.fields) {
-      const { error } = await unlinkField(id, version.id, field.id)
-      if (error) {
-        danger(error.message ?? 'Failed to delete field')
-        return
-      }
-    }
-  }
-
-  const { error } = await deleteReferenceDataObject(id)
-  if (error) {
-    danger(error.message ?? 'Failed to delete — remove all fields first')
-    return
-  }
-  success(`"${objectName}" deleted`)
-  await updateReferenceDataObjects()
-  router.push({ name: 'dashboard' })
-}
 
 type TabKey = 'browse' | 'api' | 'process' | 'edit'
 
@@ -168,47 +86,7 @@ watch(userRole, () => {
       </section>
 
       <section v-else-if="activeTab === 'edit' && userRole === 'ceedsEntity'">
-        <h2>Edit</h2>
-        <ButtonLink
-          component="button"
-          buttonStyle="error-secondary"
-          size="compact"
-          :disabled="!canDeleteObject"
-          :title="!canDeleteObject ? 'Remove all fields before deleting this object' : undefined"
-          @click="deleteObject"
-        >
-          Delete reference data object
-        </ButtonLink>
-        <template v-if="draftVersion">
-          <ul class="draft-fields">
-            <li v-for="field in draftVersion.fields" :key="field.id">
-              {{ field.name }} — {{ field.dataType }}
-              <template v-if="field.options.length">({{ optionNames(field) }})</template>
-              <ButtonLink
-                component="button"
-                buttonStyle="error-secondary"
-                size="compact"
-                @click="deleteField(field.id, field.name)"
-              >
-                Delete
-              </ButtonLink>
-            </li>
-          </ul>
-          <FieldForm :id :version-id="draftVersion.id" @created="load" />
-          <ButtonLink component="button" buttonStyle="secondary" size="compact" @click="publish">
-            Publish version {{ draftVersion.versionCode }}
-          </ButtonLink>
-        </template>
-        <template v-else>
-          <ButtonLink
-            component="button"
-            buttonStyle="secondary"
-            size="compact"
-            @click="startNewVersion"
-          >
-            Start new version to add fields
-          </ButtonLink>
-        </template>
+        <ReferenceDataObjectEditor :id />
       </section>
     </template>
   </main>
@@ -259,11 +137,5 @@ watch(userRole, () => {
   background-color: var(--lavender);
   color: var(--light);
   font-weight: 600;
-}
-
-.draft-fields li {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
 }
 </style>

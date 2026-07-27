@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
+import {
+  createColumnHelper,
+  FlexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 import { createEntry, deleteEntry, listEntries, updateEntry } from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
@@ -7,6 +15,9 @@ import EntryForm from './EntryForm.vue'
 import ModalDialog from './ModalDialog.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
+
+type EntryDto = components['schemas']['EntryDto']
+type FieldDto = components['schemas']['FieldDto']
 
 const { id, version, editable } = defineProps<{
   id: components['parameters']['ReferenceDataObjectId']
@@ -17,9 +28,9 @@ const { id, version, editable } = defineProps<{
 const { confirm } = useConfirmDialog()
 const { danger, success } = useToast()
 
-const entries = ref<components['schemas']['EntryDto'][]>([])
+const entries = ref<EntryDto[]>([])
 const dialog = ref<InstanceType<typeof ModalDialog>>()
-const editing = ref<components['schemas']['EntryDto']>()
+const editing = ref<EntryDto>()
 const formKey = ref(0)
 
 const load = async () => {
@@ -40,7 +51,7 @@ const openCreate = () => {
   dialog.value?.showModal()
 }
 
-const openEdit = (entry: components['schemas']['EntryDto']) => {
+const openEdit = (entry: EntryDto) => {
   editing.value = entry
   formKey.value++
   dialog.value?.showModal()
@@ -63,7 +74,7 @@ const save = async (payload: {
   await load()
 }
 
-const remove = async (entry: components['schemas']['EntryDto']) => {
+const remove = async (entry: EntryDto) => {
   if (!(await confirm('Delete entry', 'Delete this entry? This cannot be undone.'))) return
   const { error } = await deleteEntry(id, entry.id)
   if (error) {
@@ -74,23 +85,113 @@ const remove = async (entry: components['schemas']['EntryDto']) => {
   await load()
 }
 
-const display = (
-  entry: components['schemas']['EntryDto'],
-  field: components['schemas']['FieldDto'],
-) => {
+const rawValue = (entry: EntryDto, field: FieldDto): string | number | undefined => {
   const value = entry.values.find((candidate) => candidate.fieldId === field.id)
-  if (!value) return '—'
+  if (!value) return undefined
   switch (field.dataType) {
     case 'NUMBER':
-      return value.numberValue?.toString() ?? '—'
+      return value.numberValue
     case 'DATE':
-      return value.dateValue ?? '—'
+      return value.dateValue
     case 'ENUM':
-      return field.options.find((option) => option.id === value.enumOptionId)?.name ?? '—'
+      return field.options.find((option) => option.id === value.enumOptionId)?.name
     default:
-      return value.textValue ?? '—'
+      return value.textValue
   }
 }
+
+const display = (entry: EntryDto, field: FieldDto) => rawValue(entry, field)?.toString() ?? '—'
+
+const columnHelper = createColumnHelper<EntryDto>()
+
+const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
+  columnHelper.accessor((entry) => entry.nation, {
+    id: 'nation',
+    header: 'Country',
+    cell: (ctx) => ctx.row.original.nation ?? '—',
+  }),
+  ...version.fields.map((field) =>
+    columnHelper.accessor((entry) => rawValue(entry, field), {
+      id: field.id,
+      header: field.name,
+      cell: (ctx) => display(ctx.row.original, field),
+    }),
+  ),
+  columnHelper.display({
+    id: 'incomplete',
+    header: '',
+    enableSorting: false,
+    cell: (ctx) => {
+      if (ctx.row.original.complete) return null
+      const lastComplete = ctx.row.original.lastCompleteVersionCode
+      return h(
+        'span',
+        {
+          class: 'chip chip-incomplete',
+          title:
+            lastComplete != null
+              ? `This entry was last complete as of version ${lastComplete}; a mandatory field added since then has no value.`
+              : 'This entry has never had values for all of its mandatory fields.',
+        },
+        lastComplete != null ? `v${lastComplete}` : 'Incomplete',
+      )
+    },
+  }),
+  ...(editable
+    ? [
+        columnHelper.display({
+          id: 'actions',
+          header: '',
+          enableSorting: false,
+          cell: (ctx) => {
+            const entry = ctx.row.original
+            return [
+              h(
+                ButtonLink,
+                {
+                  component: 'button',
+                  buttonStyle: 'tertiary',
+                  size: 'compact',
+                  onClick: () => openEdit(entry),
+                },
+                () => 'Edit',
+              ),
+              h(
+                ButtonLink,
+                {
+                  component: 'button',
+                  buttonStyle: 'error-secondary',
+                  size: 'compact',
+                  onClick: () => remove(entry),
+                },
+                () => 'Delete',
+              ),
+            ]
+          },
+        }),
+      ]
+    : []),
+])
+
+const sorting = ref<SortingState>([])
+
+const table = useVueTable({
+  data: entries,
+  get columns() {
+    return columns.value
+  },
+  getRowId: (row) => row.id,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  state: {
+    get sorting() {
+      return sorting.value
+    },
+  },
+  onSortingChange: (updater) => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
+})
 </script>
 
 <template>
@@ -114,43 +215,45 @@ const display = (
     <div v-else class="table-scroll">
       <table>
         <thead>
-          <tr>
-            <th>Country</th>
-            <th v-for="field in version.fields" :key="field.id">{{ field.name }}</th>
-            <th></th>
-            <th v-if="editable"></th>
+          <tr class="version-row">
+            <th v-for="header in table.getHeaderGroups()[0]?.headers" :key="header.id">
+              <span v-if="header.column.id === 'incomplete'" class="version-label">
+                Version {{ version.versionCode }}
+                <span
+                  class="chip"
+                  :class="version.publishState === 'PUBLISHED' ? 'chip-published' : 'chip-draft'"
+                >
+                  {{ version.publishState }}
+                </span>
+              </span>
+            </th>
+          </tr>
+          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+            <th
+              v-for="header in headerGroup.headers"
+              :key="header.id"
+              :class="{ sortable: header.column.getCanSort() }"
+              @click="header.column.getToggleSortingHandler()?.($event)"
+            >
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :render="header.column.columnDef.header"
+                :props="header.getContext()"
+              />
+              <span v-if="header.column.getIsSorted() === 'asc'" aria-hidden="true"> ▲</span>
+              <span v-else-if="header.column.getIsSorted() === 'desc'" aria-hidden="true"> ▼</span>
+              <span v-else-if="header.column.getCanSort()" class="sort-hint" aria-hidden="true"> ⇅</span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in entries" :key="entry.id">
-            <td>{{ entry.nation ?? '—' }}</td>
-            <td v-for="field in version.fields" :key="field.id">{{ display(entry, field) }}</td>
-            <td>
-              <span
-                v-if="!entry.complete"
-                class="chip chip-incomplete"
-                title="A mandatory field of this version has no value"
-              >
-                Incomplete
-              </span>
-            </td>
-            <td v-if="editable" class="row-actions">
-              <ButtonLink
-                component="button"
-                buttonStyle="tertiary"
-                size="compact"
-                @click="openEdit(entry)"
-              >
-                Edit
-              </ButtonLink>
-              <ButtonLink
-                component="button"
-                buttonStyle="error-secondary"
-                size="compact"
-                @click="remove(entry)"
-              >
-                Delete
-              </ButtonLink>
+          <tr v-for="row in table.getRowModel().rows" :key="row.id">
+            <td
+              v-for="cell in row.getVisibleCells()"
+              :key="cell.id"
+              :class="{ 'row-actions': cell.column.id === 'actions' }"
+            >
+              <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
             </td>
           </tr>
         </tbody>
@@ -205,6 +308,30 @@ td {
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid #e4e4e4;
   white-space: nowrap;
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  color: var(--teal);
+}
+
+.version-row th {
+  background-color: var(--surface-alt);
+  font-weight: 600;
+}
+
+.version-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.sort-hint {
+  opacity: 0.4;
 }
 
 .row-actions {

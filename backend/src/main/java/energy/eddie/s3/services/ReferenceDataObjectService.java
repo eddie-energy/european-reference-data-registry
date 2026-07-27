@@ -22,7 +22,9 @@ import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -191,6 +193,25 @@ public class ReferenceDataObjectService {
         if (distinct != options.size()) {
             throw new ConflictException("Enum options must be unique and non-blank");
         }
+    }
+
+    @Transactional
+    public ReferenceDataObjectVersionDetail reorderFields(UUID id, UUID versionId, List<UUID> fieldIds) {
+        var version = findVersion(id, versionId);
+        if (version.getPublishState() == PublishState.PUBLISHED) {
+            throw new ConflictException("Cannot reorder fields of a published version");
+        }
+        var current = version.getFields();
+        if (fieldIds.size() != current.size()
+                || !Set.copyOf(fieldIds).equals(current.stream().map(Field::getId).collect(Collectors.toSet()))) {
+            throw new ConflictException("fieldIds must be a permutation of the version's current fields");
+        }
+        var byId = current.stream().collect(Collectors.toMap(Field::getId, f -> f));
+        var reordered = fieldIds.stream().map(byId::get).toList();
+        current.clear();
+        current.addAll(reordered);
+        versionRepository.save(version);
+        return mapper.toVersionDetail(version);
     }
 
     @Transactional

@@ -6,6 +6,7 @@ import energy.eddie.s3.generated.model.CreateReferenceDataObjectRequest;
 import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
+import energy.eddie.s3.generated.model.ReorderFieldsRequest;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
 import energy.eddie.s3.services.ReferenceDataObjectService;
 import java.util.List;
@@ -70,5 +71,11 @@ public class ReferenceDataObjectController implements ReferenceDataApi {
     public ResponseEntity<Void> unlinkField(UUID id, UUID versionId, UUID fieldId) {
         service.unlinkField(id, versionId, fieldId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<ReferenceDataObjectVersionDetail> reorderFields(
+            UUID id, UUID versionId, ReorderFieldsRequest reorderFieldsRequest) {
+        return ResponseEntity.ok(service.reorderFields(id, versionId, reorderFieldsRequest.getFieldIds()));
     }
 }
