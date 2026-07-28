@@ -14,7 +14,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 
 const parseVersionCode = (raw: unknown): number | undefined => {
-  const parsed = typeof raw === 'string' ? Number(raw) : NaN
+  const parsed = typeof raw === 'string' ? Number(raw) : Number.NaN
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
@@ -89,18 +89,13 @@ watch(userRole, () => {
   }
 })
 
-watch(activeTab, (tab) => {
-  router.replace({ query: { ...route.query, tab } })
-})
-
-watch(selectedVersionCode, (version) => {
-  const query = { ...route.query }
-  if (version != null) {
-    query.version = String(version)
-  } else {
-    delete query.version
-  }
-  router.replace({ query })
+watch([activeTab, selectedVersionCode], ([tab, version]) => {
+  const { version: _current, ...rest } = route.query
+  router.replace({ query: version == null ? {...rest, tab} : {
+      ...rest,
+      tab,
+      version: String(version)
+    } })
 })
 </script>
 
