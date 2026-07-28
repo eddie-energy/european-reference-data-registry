@@ -22,7 +22,9 @@ import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -190,6 +192,45 @@ public class ReferenceDataObjectService {
                 .count();
         if (distinct != options.size()) {
             throw new ConflictException("Enum options must be unique and non-blank");
+        }
+    }
+
+    @Transactional
+    public ReferenceDataObjectVersionDetail reorderFields(UUID id, UUID versionId, List<UUID> fieldIds) {
+        var version = findVersion(id, versionId);
+        if (version.getPublishState() == PublishState.PUBLISHED) {
+            throw new ConflictException("Cannot reorder fields of a published version");
+        }
+        var current = version.getFields();
+        if (fieldIds.size() != current.size()
+                || !Set.copyOf(fieldIds).equals(current.stream().map(Field::getId).collect(Collectors.toSet()))) {
+            throw new ConflictException("fieldIds must be a permutation of the version's current fields");
+        }
+        var byId = current.stream().collect(Collectors.toMap(Field::getId, f -> f));
+        var reordered = fieldIds.stream().map(byId::get).toList();
+        current.clear();
+        current.addAll(reordered);
+        versionRepository.save(version);
+        return mapper.toVersionDetail(version);
+    }
+
+    @Transactional
+    public void deleteVersion(UUID id, UUID versionId) {
+        var version = findVersion(id, versionId);
+        if (version.getPublishState() != PublishState.DRAFT) {
+            throw new ConflictException("Only draft versions can be deleted");
+        }
+        var rdo = version.getReferenceDataObject();
+        if (rdo.getVersions().size() <= 1) {
+            throw new ConflictException("Reference data object must have at least one version");
+        }
+        var fields = List.copyOf(version.getFields());
+        rdo.getVersions().remove(version);
+        versionRepository.delete(version);
+        for (var field : fields) {
+            if (isFieldUnused(field.getId())) {
+                fieldRepository.delete(field);
+            }
         }
     }
 

@@ -46,8 +46,9 @@ public class EntryService {
     @Transactional(readOnly = true)
     public List<EntryDto> listEntries(UUID id, UUID versionId) {
         var version = findVersion(id, versionId);
+        var allVersionsDesc = versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id);
         return entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(id).stream()
-                .map(entry -> toDto(entry, version))
+                .map(entry -> toDto(entry, version, allVersionsDesc))
                 .toList();
     }
 
@@ -56,7 +57,8 @@ public class EntryService {
         var version = findVersion(id, versionId);
         var entry = new Entry(version.getReferenceDataObject(), toNation(request.getNation()));
         applyValues(entry, version, request);
-        return toDto(entryRepository.save(entry), version);
+        var saved = entryRepository.save(entry);
+        return toDto(saved, version, versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id));
     }
 
     @Transactional
@@ -66,7 +68,8 @@ public class EntryService {
         entry.setNation(toNation(request.getNation()));
         applyValues(entry, version, request);
         entry.touch();
-        return toDto(entryRepository.save(entry), version);
+        var saved = entryRepository.save(entry);
+        return toDto(saved, version, versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id));
     }
 
     @Transactional
@@ -154,17 +157,33 @@ public class EntryService {
         return count;
     }
 
-    private static EntryDto toDto(Entry entry, ReferenceDataObjectVersion version) {
+    private static EntryDto toDto(
+            Entry entry, ReferenceDataObjectVersion version, List<ReferenceDataObjectVersion> allVersionsDesc) {
         var values = version.getFields().stream()
                 .map(field -> toValueDto(entry, field))
                 .toList();
-        var complete = version.getFields().stream()
+        var complete = isComplete(entry, version);
+        var dto = new EntryDto(entry.getId(), entry.getCreatedAt(), entry.getUpdatedAt(), complete, values);
+        dto.setNation(fromNation(entry.getNation()));
+        dto.setLastCompleteVersionCode(findLastCompleteVersionCode(entry, allVersionsDesc));
+        return dto;
+    }
+
+    private static boolean isComplete(Entry entry, ReferenceDataObjectVersion version) {
+        return version.getFields().stream()
                 .filter(Field::isMandatory)
                 .filter(field -> appliesTo(field, entry.getNation()))
                 .allMatch(field -> entry.findValue(field.getId()).isPresent());
-        var dto = new EntryDto(entry.getId(), entry.getCreatedAt(), entry.getUpdatedAt(), complete, values);
-        dto.setNation(fromNation(entry.getNation()));
-        return dto;
+    }
+
+    @Nullable
+    private static Integer findLastCompleteVersionCode(
+            Entry entry, List<ReferenceDataObjectVersion> allVersionsDesc) {
+        return allVersionsDesc.stream()
+                .filter(version -> isComplete(entry, version))
+                .map(ReferenceDataObjectVersion::getVersionCode)
+                .findFirst()
+                .orElse(null);
     }
 
     private static boolean appliesTo(Field field, @Nullable Nation entryNation) {

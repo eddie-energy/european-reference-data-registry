@@ -60,6 +60,18 @@ class EntryServiceTest {
         return version;
     }
 
+    private static ReferenceDataObjectVersion version(ReferenceDataObject rdo, int versionCode, Field... fields) {
+        var version = new ReferenceDataObjectVersion(rdo, versionCode, PublishState.DRAFT);
+        ReflectionTestUtils.setField(version, "id", UUID.randomUUID());
+        version.getFields().addAll(List.of(fields));
+        return version;
+    }
+
+    private void mockAllVersionsDesc(ReferenceDataObjectVersion... versionsDesc) {
+        when(versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(OBJECT_ID))
+                .thenReturn(List.of(versionsDesc));
+    }
+
     private static Field field(String name, DataType dataType, boolean mandatory) {
         return field(name, dataType, mandatory, null);
     }
@@ -285,5 +297,58 @@ class EntryServiceTest {
         assertThat(result.getFirst().getComplete()).isFalse();
         assertThat(result.getFirst().getValues()).extracting(EntryValueDto::getTextValue)
                 .containsExactly("Vienna", null);
+    }
+
+    @Test
+    void listEntries_incomplete_reportsLastCompleteVersionCode() {
+        var rdo = rdo();
+        var name = field("name", DataType.TEXT, true);
+        var country = field("country", DataType.TEXT, true);
+        var v1 = version(rdo, 1, name);
+        var v2 = version(rdo, 2, name, country);
+        var entry = entry(rdo);
+        entry.putValue(name).setTextValue("Vienna");
+        mockVersion(v2);
+        mockAllVersionsDesc(v2, v1);
+        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(entry));
+
+        var result = service.listEntries(OBJECT_ID, VERSION_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getComplete()).isFalse();
+        assertThat(result.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
+    }
+
+    @Test
+    void listEntries_neverComplete_lastCompleteVersionCodeIsNull() {
+        var rdo = rdo();
+        var mandatory = field("name", DataType.TEXT, true);
+        var v1 = version(rdo, 1, mandatory);
+        var entry = entry(rdo);
+        mockVersion(v1);
+        mockAllVersionsDesc(v1);
+        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(entry));
+
+        var result = service.listEntries(OBJECT_ID, VERSION_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getComplete()).isFalse();
+        assertThat(result.getFirst().getLastCompleteVersionCode()).isNull();
+    }
+
+    @Test
+    void createEntry_complete_lastCompleteVersionCodeMatchesCurrentVersion() {
+        var rdo = rdo();
+        var text = field("name", DataType.TEXT, true);
+        var v1 = version(rdo, 1, text);
+        mockVersion(v1);
+        mockAllVersionsDesc(v1);
+        mockSave();
+
+        var result = service.createEntry(OBJECT_ID, VERSION_ID, request(List.of(
+                new EntryValueDto(text.getId()).textValue("Vienna"))));
+
+        assertThat(result.getComplete()).isTrue();
+        assertThat(result.getLastCompleteVersionCode()).isEqualTo(1);
     }
 }

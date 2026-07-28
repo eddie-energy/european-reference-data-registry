@@ -5,7 +5,9 @@ import { ref } from 'vue'
 export const referenceDataObjects = ref<components['schemas']['ReferenceDataObjectDetail'][]>()
 
 export const updateReferenceDataObjects = async () => {
-  referenceDataObjects.value = (await getAllReferenceDataObjects()).data
+  const { data, error } = await getAllReferenceDataObjects()
+  referenceDataObjects.value = data
+  return { error }
 }
 
 export const referenceDataObject = ref<components['schemas']['ReferenceDataObjectDetail']>()
@@ -13,5 +15,7 @@ export const referenceDataObject = ref<components['schemas']['ReferenceDataObjec
 export const updateReferenceDataObject = async (
   id: components['parameters']['ReferenceDataObjectId'],
 ) => {
-  referenceDataObject.value = (await getReferenceDataObject(id)).data
+  const { data, error } = await getReferenceDataObject(id)
+  referenceDataObject.value = data
+  return { error }
 }

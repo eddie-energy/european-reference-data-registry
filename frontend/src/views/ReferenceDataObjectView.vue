@@ -1,109 +1,65 @@
 <script lang="ts" setup>
-import {
-  referenceDataObject,
-  updateReferenceDataObject,
-  updateReferenceDataObjects,
-} from '@/stores/referenceDataObject'
+import { referenceDataObject, updateReferenceDataObject } from '@/stores/referenceDataObject'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { userRole } from '@/stores/userInfo'
-import { createVersion, publishVersion, deleteReferenceDataObject, unlinkField } from '@/api'
-import FieldForm from '@/components/FieldForm.vue'
 import EntryTable from '@/components/EntryTable.vue'
-import ButtonLink from '@/components/ButtonLink.vue'
-import { useConfirmDialog } from '@/composables/confirm-dialog'
-import useToast from '@/composables/useToast'
-import type { components } from '@/schema'
+import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
 
 const { id } = defineProps<{ id: string }>()
 const route = useRoute()
 const router = useRouter()
-const { confirm } = useConfirmDialog()
-const { danger, success } = useToast()
 
-const load = () => updateReferenceDataObject(id)
+const loading = ref(true)
+const errorMessage = ref('')
+
+const parseVersionCode = (raw: unknown): number | undefined => {
+  const parsed = typeof raw === 'string' ? Number(raw) : Number.NaN
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+const selectedVersionCode = ref<number>()
+
+const load = async () => {
+  loading.value = true
+  errorMessage.value = ''
+  selectedVersionCode.value = parseVersionCode(route.query.version)
+  const { error } = await updateReferenceDataObject(id)
+  if (error) {
+    errorMessage.value = error.message ?? 'Failed to load this reference data object'
+  }
+  loading.value = false
+}
 
 onMounted(load)
 watch(() => id, load)
 
-const draftVersion = computed(() => {
-  const versions = referenceDataObject.value?.versions
-  const lastVersion = versions?.[versions.length - 1]
-  return lastVersion?.publishState === 'DRAFT' ? lastVersion : undefined
+const visibleVersions = computed(() => {
+  const versions = referenceDataObject.value?.versions ?? []
+  return userRole.value === 'ceedsEntity'
+    ? versions
+    : versions.filter((version) => version.publishState === 'PUBLISHED')
 })
 
 const browseVersion = computed(() => {
-  const versions = referenceDataObject.value?.versions ?? []
-  const visible =
-    userRole.value === 'ceedsEntity'
-      ? versions
-      : versions.filter((version) => version.publishState === 'PUBLISHED')
-  return visible[visible.length - 1]
+  const versions = visibleVersions.value
+  if (userRole.value === 'ceedsEntity' && selectedVersionCode.value != null) {
+    const match = versions.find((version) => version.versionCode === selectedVersionCode.value)
+    if (match) return match
+  }
+  return versions[versions.length - 1]
 })
 
-const startNewVersion = async () => {
-  await createVersion(id)
-  await load()
-}
-
-const publish = async () => {
-  if (!draftVersion.value) return
-  await publishVersion(id, draftVersion.value.id)
-  await load()
-}
-
-const hasFields = computed(() =>
-  (referenceDataObject.value?.versions ?? []).some((version) => version.fields.length > 0),
+const isLatestBrowseVersion = computed(
+  () => browseVersion.value?.id === visibleVersions.value[visibleVersions.value.length - 1]?.id,
 )
 
-const isDraftMode = computed(() =>
-  (referenceDataObject.value?.versions ?? []).every((version) => version.publishState === 'DRAFT'),
-)
-
-const canDeleteObject = computed(() => !hasFields.value || isDraftMode.value)
-
-const optionNames = (field: components['schemas']['FieldDto']) =>
-  field.options.map((option) => option.name).join(', ')
-
-const deleteField = async (fieldId: string, fieldName: string) => {
-  if (!draftVersion.value) return
-  if (!(await confirm('Delete field', `Delete "${fieldName}"? This cannot be undone.`))) return
-  const { error } = await unlinkField(id, draftVersion.value.id, fieldId)
-  if (error) {
-    danger(error.message ?? 'Failed to delete field')
-    return
-  }
-  success(`Field "${fieldName}" deleted`)
-  await load()
-}
-
-const deleteObject = async () => {
-  if (!canDeleteObject.value) return
-  const objectName = referenceDataObject.value?.name
-  const message = hasFields.value
-    ? 'Delete this reference data object? All of its fields will also be deleted. This cannot be undone.'
-    : 'Delete this reference data object? This cannot be undone.'
-  if (!(await confirm('Delete reference data object', message))) return
-
-  for (const version of referenceDataObject.value?.versions ?? []) {
-    for (const field of version.fields) {
-      const { error } = await unlinkField(id, version.id, field.id)
-      if (error) {
-        danger(error.message ?? 'Failed to delete field')
-        return
-      }
-    }
-  }
-
-  const { error } = await deleteReferenceDataObject(id)
-  if (error) {
-    danger(error.message ?? 'Failed to delete — remove all fields first')
-    return
-  }
-  success(`"${objectName}" deleted`)
-  await updateReferenceDataObjects()
-  router.push({ name: 'dashboard' })
-}
+const versionSwitchModel = computed<number | undefined>({
+  get: () => selectedVersionCode.value ?? browseVersion.value?.versionCode,
+  set: (value) => {
+    selectedVersionCode.value = value
+  },
+})
 
 type TabKey = 'browse' | 'api' | 'process' | 'edit'
 
@@ -128,6 +84,18 @@ watch(userRole, () => {
   if (activeTab.value === 'edit' && userRole.value !== 'ceedsEntity') {
     activeTab.value = 'browse'
   }
+  if (userRole.value !== 'ceedsEntity') {
+    selectedVersionCode.value = undefined
+  }
+})
+
+watch([activeTab, selectedVersionCode], ([tab, version]) => {
+  const { version: _current, ...rest } = route.query
+  router.replace({ query: version == null ? {...rest, tab} : {
+      ...rest,
+      tab,
+      version: String(version)
+    } })
 })
 </script>
 
@@ -155,11 +123,23 @@ watch(userRole, () => {
       </nav>
 
       <section v-if="activeTab === 'browse'">
+        <div v-if="userRole === 'ceedsEntity' && visibleVersions.length > 1" class="version-switch">
+          <label for="versionSelect">Version</label>
+          <select id="versionSelect" v-model.number="versionSwitchModel">
+            <option
+              v-for="version in [...visibleVersions].reverse()"
+              :key="version.id"
+              :value="version.versionCode"
+            >
+              Version {{ version.versionCode }} ({{ version.publishState }})
+            </option>
+          </select>
+        </div>
         <EntryTable
           v-if="browseVersion"
           :id
           :version="browseVersion"
-          :editable="userRole === 'ceedsEntity'"
+          :editable="userRole === 'ceedsEntity' && isLatestBrowseVersion"
         />
       </section>
 
@@ -168,49 +148,12 @@ watch(userRole, () => {
       </section>
 
       <section v-else-if="activeTab === 'edit' && userRole === 'ceedsEntity'">
-        <h2>Edit</h2>
-        <ButtonLink
-          component="button"
-          buttonStyle="error-secondary"
-          size="compact"
-          :disabled="!canDeleteObject"
-          :title="!canDeleteObject ? 'Remove all fields before deleting this object' : undefined"
-          @click="deleteObject"
-        >
-          Delete reference data object
-        </ButtonLink>
-        <template v-if="draftVersion">
-          <ul class="draft-fields">
-            <li v-for="field in draftVersion.fields" :key="field.id">
-              {{ field.name }} — {{ field.dataType }}
-              <template v-if="field.options.length">({{ optionNames(field) }})</template>
-              <ButtonLink
-                component="button"
-                buttonStyle="error-secondary"
-                size="compact"
-                @click="deleteField(field.id, field.name)"
-              >
-                Delete
-              </ButtonLink>
-            </li>
-          </ul>
-          <FieldForm :id :version-id="draftVersion.id" @created="load" />
-          <ButtonLink component="button" buttonStyle="secondary" size="compact" @click="publish">
-            Publish version {{ draftVersion.versionCode }}
-          </ButtonLink>
-        </template>
-        <template v-else>
-          <ButtonLink
-            component="button"
-            buttonStyle="secondary"
-            size="compact"
-            @click="startNewVersion"
-          >
-            Start new version to add fields
-          </ButtonLink>
-        </template>
+        <ReferenceDataObjectEditor :id />
       </section>
     </template>
+    <p v-else-if="loading" class="state-message">Loading…</p>
+    <p v-else-if="errorMessage" class="state-message error">{{ errorMessage }}</p>
+    <p v-else class="state-message">Reference data object not found.</p>
   </main>
 </template>
 
@@ -230,10 +173,19 @@ watch(userRole, () => {
   text-decoration: none;
 }
 
+.state-message {
+  opacity: 0.7;
+}
+
+.state-message.error {
+  color: var(--error);
+  opacity: 1;
+}
+
 .tabs {
   display: flex;
   gap: var(--spacing-sm);
-  border-bottom: 1px solid #e4e4e4;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-sm);
 }
@@ -261,9 +213,15 @@ watch(userRole, () => {
   font-weight: 600;
 }
 
-.draft-fields li {
+.version-switch {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.9rem;
+}
+
+.version-switch select {
+  width: auto;
 }
 </style>

@@ -10,6 +10,8 @@ import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,6 +46,21 @@ class ReferenceDataObjectVersionRepositoryIntegrationTest {
     }
 
     @Test
+    void findByReferenceDataObjectIdOrderByVersionCodeDesc_returnsDescending() {
+        var rdo = new ReferenceDataObject("Tariffs", "desc");
+        rdo.getVersions().add(new ReferenceDataObjectVersion(rdo, 1, PublishState.PUBLISHED));
+        rdo.getVersions().add(new ReferenceDataObjectVersion(rdo, 2, PublishState.PUBLISHED));
+        rdo.getVersions().add(new ReferenceDataObjectVersion(rdo, 3, PublishState.DRAFT));
+        var saved = referenceDataObjectRepository.save(rdo);
+
+        var versions = versionRepository
+                .findByReferenceDataObjectIdOrderByVersionCodeDesc(saved.getId());
+
+        assertThat(versions).extracting(ReferenceDataObjectVersion::getVersionCode)
+                .containsExactly(3, 2, 1);
+    }
+
+    @Test
     void countByFieldsId_countsLinkingVersions() {
         var rdo = new ReferenceDataObject("Tariffs", "desc");
         var v1 = new ReferenceDataObjectVersion(rdo, 1, PublishState.PUBLISHED);
@@ -75,6 +92,38 @@ class ReferenceDataObjectVersionRepositoryIntegrationTest {
     }
 
     @Test
+    void fields_persistOrderAcrossReload() {
+        var rdo = new ReferenceDataObject("Tariffs", "desc");
+        var version = new ReferenceDataObjectVersion(rdo, 1, PublishState.DRAFT);
+        rdo.getVersions().add(version);
+        var fieldA = fieldRepository.save(new Field("a", DataType.NUMBER, false, null));
+        var fieldB = fieldRepository.save(new Field("b", DataType.NUMBER, false, null));
+        var fieldC = fieldRepository.save(new Field("c", DataType.NUMBER, false, null));
+        version.getFields().addAll(List.of(fieldA, fieldB, fieldC));
+        var savedRdo = referenceDataObjectRepository.saveAndFlush(rdo);
+        var versionId = savedRdo.getVersions().get(0).getId();
+        entityManager.clear();
+
+        var reloaded = versionRepository.findById(versionId).orElseThrow();
+        assertThat(reloaded.getFields()).extracting(Field::getId)
+                .containsExactly(fieldA.getId(), fieldB.getId(), fieldC.getId());
+
+        var byId = reloaded.getFields().stream()
+                .collect(Collectors.toMap(Field::getId, field -> field));
+        var reordered = List.of(fieldC.getId(), fieldA.getId(), fieldB.getId()).stream()
+                .map(byId::get)
+                .toList();
+        reloaded.getFields().clear();
+        reloaded.getFields().addAll(reordered);
+        versionRepository.saveAndFlush(reloaded);
+        entityManager.clear();
+
+        var reReloaded = versionRepository.findById(versionId).orElseThrow();
+        assertThat(reReloaded.getFields()).extracting(Field::getId)
+                .containsExactly(fieldC.getId(), fieldA.getId(), fieldB.getId());
+    }
+
+    @Test
     void deletingField_removesItsOptions() {
         var field = new Field("role", DataType.ENUM, true, null);
         field.addOption("DSO");
@@ -85,7 +134,8 @@ class ReferenceDataObjectVersionRepositoryIntegrationTest {
         entityManager.clear();
 
         var remaining = entityManager
-                .createQuery("select count(o) from EnumOption o", Long.class)
+                .createQuery("select count(o) from EnumOption o where o.field.id = :fieldId", Long.class)
+                .setParameter("fieldId", saved.getId())
                 .getSingleResult();
         assertThat(remaining).isZero();
     }

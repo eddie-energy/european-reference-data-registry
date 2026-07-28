@@ -1,12 +1,26 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
+import {
+  createColumnHelper,
+  FlexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 import { createEntry, deleteEntry, listEntries, updateEntry } from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
 import EntryForm from './EntryForm.vue'
 import ModalDialog from './ModalDialog.vue'
+import VersionTable from './VersionTable.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
+import { referenceDataObject } from '@/stores/referenceDataObject'
+import { userRole } from '@/stores/userInfo'
+
+type EntryDto = components['schemas']['EntryDto']
+type FieldDto = components['schemas']['FieldDto']
 
 const { id, version, editable } = defineProps<{
   id: components['parameters']['ReferenceDataObjectId']
@@ -17,18 +31,23 @@ const { id, version, editable } = defineProps<{
 const { confirm } = useConfirmDialog()
 const { danger, success } = useToast()
 
-const entries = ref<components['schemas']['EntryDto'][]>([])
+const entries = ref<EntryDto[]>([])
 const dialog = ref<InstanceType<typeof ModalDialog>>()
-const editing = ref<components['schemas']['EntryDto']>()
+const editing = ref<EntryDto>()
 const formKey = ref(0)
+const submitting = ref(false)
+const loading = ref(true)
 
 const load = async () => {
+  loading.value = true
   const { data, error } = await listEntries(id, version.id)
   if (!data) {
     danger(error?.message ?? 'Failed to load entries')
+    loading.value = false
     return
   }
   entries.value = data
+  loading.value = false
 }
 
 onMounted(load)
@@ -40,7 +59,7 @@ const openCreate = () => {
   dialog.value?.showModal()
 }
 
-const openEdit = (entry: components['schemas']['EntryDto']) => {
+const openEdit = (entry: EntryDto) => {
   editing.value = entry
   formKey.value++
   dialog.value?.showModal()
@@ -51,19 +70,24 @@ const save = async (payload: {
   values: components['schemas']['EntryValueDto'][]
 }) => {
   const entry = editing.value
-  const { error } = entry
-    ? await updateEntry(id, version.id, entry.id, payload)
-    : await createEntry(id, version.id, payload)
-  if (error) {
-    danger(error.message ?? 'Failed to save entry')
-    return
+  submitting.value = true
+  try {
+    const { error } = entry
+      ? await updateEntry(id, version.id, entry.id, payload)
+      : await createEntry(id, version.id, payload)
+    if (error) {
+      danger(error.message ?? 'Failed to save entry')
+      return
+    }
+    dialog.value?.close()
+    success(entry ? 'Entry updated' : 'Entry created')
+    await load()
+  } finally {
+    submitting.value = false
   }
-  dialog.value?.close()
-  success(entry ? 'Entry updated' : 'Entry created')
-  await load()
 }
 
-const remove = async (entry: components['schemas']['EntryDto']) => {
+const remove = async (entry: EntryDto) => {
   if (!(await confirm('Delete entry', 'Delete this entry? This cannot be undone.'))) return
   const { error } = await deleteEntry(id, entry.id)
   if (error) {
@@ -74,23 +98,120 @@ const remove = async (entry: components['schemas']['EntryDto']) => {
   await load()
 }
 
-const display = (
-  entry: components['schemas']['EntryDto'],
-  field: components['schemas']['FieldDto'],
-) => {
+const rawValue = (entry: EntryDto, field: FieldDto): string | number | undefined => {
   const value = entry.values.find((candidate) => candidate.fieldId === field.id)
-  if (!value) return '—'
+  if (!value) return undefined
   switch (field.dataType) {
     case 'NUMBER':
-      return value.numberValue?.toString() ?? '—'
+      return value.numberValue
     case 'DATE':
-      return value.dateValue ?? '—'
+      return value.dateValue
     case 'ENUM':
-      return field.options.find((option) => option.id === value.enumOptionId)?.name ?? '—'
+      return field.options.find((option) => option.id === value.enumOptionId)?.name
     default:
-      return value.textValue ?? '—'
+      return value.textValue
   }
 }
+
+const display = (entry: EntryDto, field: FieldDto) => rawValue(entry, field)?.toString() ?? '—'
+
+const isPublishedVersionCode = (versionCode: number) =>
+  referenceDataObject.value?.versions.some(
+    (v) => v.versionCode === versionCode && v.publishState === 'PUBLISHED',
+  ) ?? false
+
+const columnHelper = createColumnHelper<EntryDto>()
+
+const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
+  columnHelper.accessor((entry) => entry.nation, {
+    id: 'nation',
+    header: 'Country',
+    cell: (ctx) => ctx.row.original.nation ?? '—',
+  }),
+  ...version.fields.map((field) =>
+    columnHelper.accessor((entry) => rawValue(entry, field), {
+      id: field.id,
+      header: field.name,
+      cell: (ctx) => display(ctx.row.original, field),
+    }),
+  ),
+  columnHelper.display({
+    id: 'incomplete',
+    header: 'Latest compatible version',
+    enableSorting: false,
+    cell: (ctx) => {
+      if (ctx.row.original.complete) return null
+      const lastComplete = ctx.row.original.lastCompleteVersionCode
+      const showVersionCode =
+        lastComplete != null &&
+        (userRole.value === 'ceedsEntity' || isPublishedVersionCode(lastComplete))
+      return h(
+        'span',
+        {
+          class: 'chip chip-incomplete',
+          title: showVersionCode
+            ? `This entry was last complete as of version ${lastComplete}; a mandatory field added since then has no value.`
+            : 'This entry has never had values for all of its mandatory fields.',
+        },
+        showVersionCode ? `v${lastComplete}` : 'Incomplete',
+      )
+    },
+  }),
+  ...(editable
+    ? [
+        columnHelper.display({
+          id: 'actions',
+          header: '',
+          enableSorting: false,
+          cell: (ctx) => {
+            const entry = ctx.row.original
+            return [
+              h(
+                ButtonLink,
+                {
+                  component: 'button',
+                  buttonStyle: 'tertiary',
+                  size: 'compact',
+                  onClick: () => openEdit(entry),
+                },
+                () => 'Edit',
+              ),
+              h(
+                ButtonLink,
+                {
+                  component: 'button',
+                  buttonStyle: 'error-secondary',
+                  size: 'compact',
+                  onClick: () => remove(entry),
+                },
+                () => 'Delete',
+              ),
+            ]
+          },
+        }),
+      ]
+    : []),
+])
+
+const sorting = ref<SortingState>([])
+
+const table = useVueTable({
+  data: entries,
+  get columns() {
+    return columns.value
+  },
+  getRowId: (row) => row.id,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  state: {
+    get sorting() {
+      return sorting.value
+    },
+  },
+  onSortingChange: (updater) => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
+})
 </script>
 
 <template>
@@ -110,58 +231,52 @@ const display = (
       </ButtonLink>
     </header>
 
-    <p v-if="!entries.length" class="empty">No entries yet.</p>
-    <div v-else class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Country</th>
-            <th v-for="field in version.fields" :key="field.id">{{ field.name }}</th>
-            <th></th>
-            <th v-if="editable"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="entry in entries" :key="entry.id">
-            <td>{{ entry.nation ?? '—' }}</td>
-            <td v-for="field in version.fields" :key="field.id">{{ display(entry, field) }}</td>
-            <td>
-              <span
-                v-if="!entry.complete"
-                class="chip chip-incomplete"
-                title="A mandatory field of this version has no value"
-              >
-                Incomplete
-              </span>
-            </td>
-            <td v-if="editable" class="row-actions">
-              <ButtonLink
-                component="button"
-                buttonStyle="tertiary"
-                size="compact"
-                @click="openEdit(entry)"
-              >
-                Edit
-              </ButtonLink>
-              <ButtonLink
-                component="button"
-                buttonStyle="error-secondary"
-                size="compact"
-                @click="remove(entry)"
-              >
-                Delete
-              </ButtonLink>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <p v-if="loading" class="empty">Loading…</p>
+    <p v-else-if="!entries.length" class="empty">No entries yet.</p>
+    <VersionTable
+      v-else
+      :version-code="version.versionCode"
+      :publish-state="version.publishState"
+      :colspan="table.getHeaderGroups()[0]?.headers.length ?? 1"
+    >
+      <template #header>
+        <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+          <th
+            v-for="header in headerGroup.headers"
+            :key="header.id"
+            :class="{ sortable: header.column.getCanSort() }"
+            @click="header.column.getToggleSortingHandler()?.($event)"
+          >
+            <FlexRender
+              v-if="!header.isPlaceholder"
+              :render="header.column.columnDef.header"
+              :props="header.getContext()"
+            />
+            <span v-if="header.column.getIsSorted() === 'asc'" aria-hidden="true"> ▲</span>
+            <span v-else-if="header.column.getIsSorted() === 'desc'" aria-hidden="true"> ▼</span>
+            <span v-else-if="header.column.getCanSort()" class="sort-hint" aria-hidden="true">
+              ⇅</span
+            >
+          </th>
+        </tr>
+      </template>
+      <tr v-for="row in table.getRowModel().rows" :key="row.id">
+        <td
+          v-for="cell in row.getVisibleCells()"
+          :key="cell.id"
+          :class="{ 'row-actions': cell.column.id === 'actions' }"
+        >
+          <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+        </td>
+      </tr>
+    </VersionTable>
 
     <ModalDialog ref="dialog" :title="editing ? 'Edit entry' : 'New entry'">
       <EntryForm
         :key="formKey"
         :fields="version.fields"
         :entry="editing"
+        :submitting
         @submit="save"
         @cancel="dialog?.close()"
       />
@@ -189,22 +304,17 @@ const display = (
   opacity: 0.7;
 }
 
-.table-scroll {
-  overflow-x: auto;
+th.sortable {
+  cursor: pointer;
+  user-select: none;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+th.sortable:hover {
+  color: var(--teal);
 }
 
-th,
-td {
-  text-align: left;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid #e4e4e4;
-  white-space: nowrap;
+.sort-hint {
+  opacity: 0.4;
 }
 
 .row-actions {

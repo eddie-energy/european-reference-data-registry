@@ -7,8 +7,6 @@ import ButtonLink from '@/components/ButtonLink.vue'
 import { userRole } from '@/stores/userInfo'
 import { computed } from 'vue'
 
-const itemsToShow = 3
-
 const visibleReferenceDataObjects = computed(() =>
   userRole.value === 'ceedsEntity'
     ? referenceDataObjects.value
@@ -18,9 +16,13 @@ const visibleReferenceDataObjects = computed(() =>
 )
 
 const carouselConfig = computed(() => ({
-  itemsToShow,
+  itemsToShow: 1,
   gap: 64,
-  wrapAround: (visibleReferenceDataObjects.value?.length ?? 0) > itemsToShow,
+  wrapAround: (visibleReferenceDataObjects.value?.length ?? 0) > 1,
+  breakpoints: {
+    640: { itemsToShow: 2 },
+    1024: { itemsToShow: 3 },
+  },
 }))
 </script>
 

@@ -422,6 +422,112 @@ class ReferenceDataObjectServiceTest {
     }
 
     @Test
+    void deleteVersion_onDraft_deletesVersionAndUnusedFields() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var fieldId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var published = versionWithId(rdo, UUID.randomUUID(), 1, PublishState.PUBLISHED);
+        var draft = versionWithId(rdo, versionId, 2, PublishState.DRAFT);
+        var field = fieldWithId(fieldId);
+        draft.getFields().add(field);
+        rdo.getVersions().add(published);
+        rdo.getVersions().add(draft);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(draft));
+        when(versionRepository.countByFieldsId(fieldId)).thenReturn(0L);
+
+        service.deleteVersion(id, versionId);
+
+        assertThat(rdo.getVersions()).containsExactly(published);
+        verify(versionRepository).delete(draft);
+        verify(fieldRepository).delete(field);
+    }
+
+    @Test
+    void deleteVersion_fieldStillUsedElsewhere_keepsField() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var fieldId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var published = versionWithId(rdo, UUID.randomUUID(), 1, PublishState.PUBLISHED);
+        var draft = versionWithId(rdo, versionId, 2, PublishState.DRAFT);
+        var field = fieldWithId(fieldId);
+        draft.getFields().add(field);
+        rdo.getVersions().add(published);
+        rdo.getVersions().add(draft);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(draft));
+        when(versionRepository.countByFieldsId(fieldId)).thenReturn(1L);
+
+        service.deleteVersion(id, versionId);
+
+        verify(versionRepository).delete(draft);
+        verify(fieldRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteVersion_fieldHasEntryValues_keepsField() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var fieldId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var published = versionWithId(rdo, UUID.randomUUID(), 1, PublishState.PUBLISHED);
+        var draft = versionWithId(rdo, versionId, 2, PublishState.DRAFT);
+        var field = fieldWithId(fieldId);
+        draft.getFields().add(field);
+        rdo.getVersions().add(published);
+        rdo.getVersions().add(draft);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(draft));
+        when(versionRepository.countByFieldsId(fieldId)).thenReturn(0L);
+        when(entryValueRepository.existsByFieldId(fieldId)).thenReturn(true);
+
+        service.deleteVersion(id, versionId);
+
+        verify(versionRepository).delete(draft);
+        verify(fieldRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteVersion_onPublished_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var published = versionWithId(rdo, versionId, 1, PublishState.PUBLISHED);
+        rdo.getVersions().add(published);
+        rdo.getVersions().add(versionWithId(rdo, UUID.randomUUID(), 2, PublishState.DRAFT));
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(published));
+
+        assertThatThrownBy(() -> service.deleteVersion(id, versionId))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteVersion_onlyVersion_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var draft = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
+        rdo.getVersions().add(draft);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(draft));
+
+        assertThatThrownBy(() -> service.deleteVersion(id, versionId))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteVersion_wrongRdo_throwsNotFound() {
+        var versionId = UUID.randomUUID();
+        var otherRdo = rdoWithId(UUID.randomUUID());
+        var version = versionWithId(otherRdo, versionId, 1, PublishState.DRAFT);
+        otherRdo.getVersions().add(version);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.deleteVersion(UUID.randomUUID(), versionId))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
     void replaceVersionFields_keepsExistingAndCreatesNew() {
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
@@ -578,6 +684,70 @@ class ReferenceDataObjectServiceTest {
 
         assertThatThrownBy(() -> service.replaceVersionFields(
                 UUID.randomUUID(), versionId, new ReplaceVersionFieldsRequest()))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void reorderFields_onDraft_reordersFieldsInMemory() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        var fieldA = fieldWithId(UUID.randomUUID());
+        var fieldB = fieldWithId(UUID.randomUUID());
+        var fieldC = fieldWithId(UUID.randomUUID());
+        version.getFields().addAll(List.of(fieldA, fieldB, fieldC));
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.reorderFields(id, versionId, List.of(fieldC.getId(), fieldA.getId(), fieldB.getId()));
+
+        assertThat(version.getFields()).containsExactly(fieldC, fieldA, fieldB);
+        verify(versionRepository).save(version);
+    }
+
+    @Test
+    void reorderFields_onPublished_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
+        var field = fieldWithId(UUID.randomUUID());
+        version.getFields().add(field);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.reorderFields(id, versionId, List.of(field.getId())))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
+    void reorderFields_notAPermutation_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        var fieldA = fieldWithId(UUID.randomUUID());
+        var fieldB = fieldWithId(UUID.randomUUID());
+        version.getFields().addAll(List.of(fieldA, fieldB));
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.reorderFields(id, versionId, List.of(fieldA.getId())))
+                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.reorderFields(
+                id, versionId, List.of(fieldA.getId(), fieldA.getId())))
+                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.reorderFields(
+                id, versionId, List.of(fieldA.getId(), UUID.randomUUID())))
+                .isInstanceOf(ConflictException.class);
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
+    void reorderFields_wrongRdo_throwsNotFound() {
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(UUID.randomUUID()), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.reorderFields(UUID.randomUUID(), versionId, List.of()))
                 .isInstanceOf(NotFoundException.class);
     }
 }

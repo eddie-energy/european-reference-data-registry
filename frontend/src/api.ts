@@ -81,6 +81,19 @@ export async function publishVersion(
   })
 }
 
+export async function deleteVersion(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+): Promise<{
+  data?: never
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).DELETE('/reference-data-objects/{id}/versions/{versionId}', {
+    params: { path: { id, versionId } },
+  })
+}
+
 export async function replaceVersionFields(
   id: components['parameters']['ReferenceDataObjectId'],
   versionId: components['parameters']['VersionId'],
@@ -93,6 +106,21 @@ export async function replaceVersionFields(
   return (await fetch()).PUT('/reference-data-objects/{id}/versions/{versionId}/fields', {
     params: { path: { id, versionId } },
     body,
+  })
+}
+
+export async function reorderFields(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+  fieldIds: string[],
+): Promise<{
+  data?: components['schemas']['ReferenceDataObjectVersionDetail']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).PUT('/reference-data-objects/{id}/versions/{versionId}/fields/order', {
+    params: { path: { id, versionId } },
+    body: { fieldIds },
   })
 }
 

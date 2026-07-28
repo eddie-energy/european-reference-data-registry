@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OrderColumn;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,7 @@ public class ReferenceDataObjectVersion {
             name = "reference_data_object_version_field",
             joinColumns = @JoinColumn(name = "version_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "field_id", referencedColumnName = "id"))
+    @OrderColumn(name = "position")
     protected List<Field> fields = new ArrayList<>();
 
     public ReferenceDataObjectVersion(ReferenceDataObject referenceDataObject, int versionCode,

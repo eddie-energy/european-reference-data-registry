@@ -41,7 +41,7 @@ const {
   color: var(--button-color);
   background-color: var(--button-bg-color);
   border: 1px solid var(--button-bg-color);
-  border-radius: 1.5rem;
+  border-radius: var(--pill-radius);
   font-size: 1rem;
   line-height: 1.25rem;
   width: fit-content;

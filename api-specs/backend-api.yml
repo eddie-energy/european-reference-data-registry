@@ -96,6 +96,22 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /reference-data-objects/{id}/versions/{versionId}:
+    delete:
+      tags: [ ReferenceData ]
+      operationId: deleteVersion
+      summary: Delete a draft version (not allowed if it's the object's only version)
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /reference-data-objects/{id}/versions/{versionId}/publish:
     post:
       tags: [ ReferenceData ]
@@ -181,6 +197,32 @@ paths:
       responses:
         '204':
           description: Unlinked
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /reference-data-objects/{id}/versions/{versionId}/fields/order:
+    put:
+      tags: [ ReferenceData ]
+      operationId: reorderFields
+      summary: Change the display order of fields linked to a draft version
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderFieldsRequest'
+      responses:
+        '200':
+          description: Reordered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceDataObjectVersionDetail'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -394,6 +436,20 @@ components:
           items:
             $ref: '#/components/schemas/VersionFieldRequest'
 
+    ReorderFieldsRequest:
+      type: object
+      description: >-
+        `fieldIds` must contain exactly the ids of the fields currently linked to the
+        version, in the desired new order — no additions, removals, or duplicates.
+      required: [ fieldIds ]
+      properties:
+        fieldIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+
     VersionFieldRequest:
       type: object
       description: >-
@@ -515,6 +571,12 @@ components:
         complete:
           type: boolean
           description: False when a mandatory field of the requested version has no value.
+        lastCompleteVersionCode:
+          type: integer
+          format: int32
+          description: >-
+            The highest version code this entry was complete for, across all of the object's
+            versions, or absent if it has never been complete for any version.
         values:
           type: array
           description: One item per field linked to the requested version.

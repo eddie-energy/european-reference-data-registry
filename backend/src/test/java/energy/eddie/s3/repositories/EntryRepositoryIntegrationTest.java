@@ -63,12 +63,14 @@ class EntryRepositoryIntegrationTest {
 
         assertThat(v1Entries).hasSize(1);
         assertThat(v1Entries.getFirst().getComplete()).isTrue();
+        assertThat(v1Entries.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
         assertThat(v1Entries.getFirst().getValues()).extracting(EntryValueDto::getTextValue)
                 .containsExactly("Vienna");
 
         assertThat(v2Entries).hasSize(1);
         assertThat(v2Entries.getFirst().getId()).isEqualTo(created.getId());
         assertThat(v2Entries.getFirst().getComplete()).isFalse();
+        assertThat(v2Entries.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
         assertThat(v2Entries.getFirst().getValues()).extracting(EntryValueDto::getTextValue)
                 .containsExactly("Vienna", null);
     }
