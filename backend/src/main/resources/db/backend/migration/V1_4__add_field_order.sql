@@ -15,3 +15,13 @@ WHERE rdovf.version_id = ordinals.version_id
 
 ALTER TABLE reference_data_object_version_field
     ALTER COLUMN position SET NOT NULL;
+
+ALTER TABLE reference_data_object_version_field
+    DROP CONSTRAINT reference_data_object_version_field_pkey;
+
+ALTER TABLE reference_data_object_version_field
+    ADD PRIMARY KEY (version_id, position);
+
+ALTER TABLE reference_data_object_version_field
+    ADD CONSTRAINT reference_data_object_version_field_unique_field
+        UNIQUE (version_id, field_id) DEFERRABLE INITIALLY DEFERRED;
