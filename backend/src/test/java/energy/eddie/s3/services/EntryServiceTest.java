@@ -60,7 +60,6 @@ class EntryServiceTest {
         return version;
     }
 
-    /** For building extra versions (other than the one under test) in multi-version scenarios. */
     private static ReferenceDataObjectVersion version(ReferenceDataObject rdo, int versionCode, Field... fields) {
         var version = new ReferenceDataObjectVersion(rdo, versionCode, PublishState.DRAFT);
         ReflectionTestUtils.setField(version, "id", UUID.randomUUID());
