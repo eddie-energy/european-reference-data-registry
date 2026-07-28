@@ -57,6 +57,12 @@ public class ReferenceDataObjectController implements ReferenceDataApi {
     }
 
     @Override
+    public ResponseEntity<Void> deleteVersion(UUID id, UUID versionId) {
+        service.deleteVersion(id, versionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     public ResponseEntity<FieldDto> createField(UUID id, UUID versionId, CreateFieldRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.createField(id, versionId, request));
     }

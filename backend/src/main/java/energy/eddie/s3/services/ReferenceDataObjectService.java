@@ -215,6 +215,26 @@ public class ReferenceDataObjectService {
     }
 
     @Transactional
+    public void deleteVersion(UUID id, UUID versionId) {
+        var version = findVersion(id, versionId);
+        if (version.getPublishState() != PublishState.DRAFT) {
+            throw new ConflictException("Only draft versions can be deleted");
+        }
+        var rdo = version.getReferenceDataObject();
+        if (rdo.getVersions().size() <= 1) {
+            throw new ConflictException("Reference data object must have at least one version");
+        }
+        var fields = List.copyOf(version.getFields());
+        rdo.getVersions().remove(version);
+        versionRepository.delete(version);
+        for (var field : fields) {
+            if (isFieldUnused(field.getId())) {
+                fieldRepository.delete(field);
+            }
+        }
+    }
+
+    @Transactional
     public void unlinkField(UUID id, UUID versionId, UUID fieldId) {
         var version = findVersion(id, versionId);
         if (version.getPublishState() == PublishState.PUBLISHED) {

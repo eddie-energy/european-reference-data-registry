@@ -26,7 +26,7 @@ const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntity', 'dataspace
           </option>
         </select>
       </div>
-      <a class="sign-out">Sign Out</a>
+      <button type="button" class="sign-out">Sign Out</button>
     </div>
   </aside>
 </template>
@@ -40,7 +40,7 @@ const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntity', 'dataspace
   width: 15rem;
   padding: var(--spacing-xlg) var(--spacing-lg);
   background-color: var(--light);
-  border-right: 1px solid #e4e4e4;
+  border-right: 1px solid var(--border-color);
 }
 
 .logo {
@@ -86,7 +86,7 @@ nav a.router-link-active {
   flex-direction: column;
   gap: var(--spacing-sm);
   padding-top: var(--spacing-md);
-  border-top: 1px solid #e4e4e4;
+  border-top: 1px solid var(--border-color);
 }
 
 .account-label {
@@ -114,7 +114,7 @@ nav a.router-link-active {
   box-sizing: border-box;
   appearance: none;
   padding: var(--spacing-sm) var(--spacing-xlg) var(--spacing-sm) var(--spacing-md);
-  border: 1px solid #d0d0d0;
+  border: 1px solid var(--input-border-color);
   border-radius: 1.25rem;
   background-color: var(--light);
   color: var(--dark);
@@ -130,6 +130,11 @@ nav a.router-link-active {
 }
 
 .sign-out {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
   color: var(--dark);
   opacity: 0.7;
   text-decoration: none;

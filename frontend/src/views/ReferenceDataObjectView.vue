@@ -1,26 +1,64 @@
 <script lang="ts" setup>
 import { referenceDataObject, updateReferenceDataObject } from '@/stores/referenceDataObject'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { userRole } from '@/stores/userInfo'
 import EntryTable from '@/components/EntryTable.vue'
 import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
 
 const { id } = defineProps<{ id: string }>()
 const route = useRoute()
+const router = useRouter()
 
-const load = () => updateReferenceDataObject(id)
+const loading = ref(true)
+const errorMessage = ref('')
+
+const parseVersionCode = (raw: unknown): number | undefined => {
+  const parsed = typeof raw === 'string' ? Number(raw) : NaN
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+const selectedVersionCode = ref<number>()
+
+const load = async () => {
+  loading.value = true
+  errorMessage.value = ''
+  selectedVersionCode.value = parseVersionCode(route.query.version)
+  const { error } = await updateReferenceDataObject(id)
+  if (error) {
+    errorMessage.value = error.message ?? 'Failed to load this reference data object'
+  }
+  loading.value = false
+}
 
 onMounted(load)
 watch(() => id, load)
 
-const browseVersion = computed(() => {
+const visibleVersions = computed(() => {
   const versions = referenceDataObject.value?.versions ?? []
-  const visible =
-    userRole.value === 'ceedsEntity'
-      ? versions
-      : versions.filter((version) => version.publishState === 'PUBLISHED')
-  return visible[visible.length - 1]
+  return userRole.value === 'ceedsEntity'
+    ? versions
+    : versions.filter((version) => version.publishState === 'PUBLISHED')
+})
+
+const browseVersion = computed(() => {
+  const versions = visibleVersions.value
+  if (userRole.value === 'ceedsEntity' && selectedVersionCode.value != null) {
+    const match = versions.find((version) => version.versionCode === selectedVersionCode.value)
+    if (match) return match
+  }
+  return versions[versions.length - 1]
+})
+
+const isLatestBrowseVersion = computed(
+  () => browseVersion.value?.id === visibleVersions.value[visibleVersions.value.length - 1]?.id,
+)
+
+const versionSwitchModel = computed<number | undefined>({
+  get: () => selectedVersionCode.value ?? browseVersion.value?.versionCode,
+  set: (value) => {
+    selectedVersionCode.value = value
+  },
 })
 
 type TabKey = 'browse' | 'api' | 'process' | 'edit'
@@ -46,6 +84,23 @@ watch(userRole, () => {
   if (activeTab.value === 'edit' && userRole.value !== 'ceedsEntity') {
     activeTab.value = 'browse'
   }
+  if (userRole.value !== 'ceedsEntity') {
+    selectedVersionCode.value = undefined
+  }
+})
+
+watch(activeTab, (tab) => {
+  router.replace({ query: { ...route.query, tab } })
+})
+
+watch(selectedVersionCode, (version) => {
+  const query = { ...route.query }
+  if (version != null) {
+    query.version = String(version)
+  } else {
+    delete query.version
+  }
+  router.replace({ query })
 })
 </script>
 
@@ -73,11 +128,23 @@ watch(userRole, () => {
       </nav>
 
       <section v-if="activeTab === 'browse'">
+        <div v-if="userRole === 'ceedsEntity' && visibleVersions.length > 1" class="version-switch">
+          <label for="versionSelect">Version</label>
+          <select id="versionSelect" v-model.number="versionSwitchModel">
+            <option
+              v-for="version in [...visibleVersions].reverse()"
+              :key="version.id"
+              :value="version.versionCode"
+            >
+              Version {{ version.versionCode }} ({{ version.publishState }})
+            </option>
+          </select>
+        </div>
         <EntryTable
           v-if="browseVersion"
           :id
           :version="browseVersion"
-          :editable="userRole === 'ceedsEntity'"
+          :editable="userRole === 'ceedsEntity' && isLatestBrowseVersion"
         />
       </section>
 
@@ -89,6 +156,9 @@ watch(userRole, () => {
         <ReferenceDataObjectEditor :id />
       </section>
     </template>
+    <p v-else-if="loading" class="state-message">Loading…</p>
+    <p v-else-if="errorMessage" class="state-message error">{{ errorMessage }}</p>
+    <p v-else class="state-message">Reference data object not found.</p>
   </main>
 </template>
 
@@ -108,10 +178,19 @@ watch(userRole, () => {
   text-decoration: none;
 }
 
+.state-message {
+  opacity: 0.7;
+}
+
+.state-message.error {
+  color: var(--error);
+  opacity: 1;
+}
+
 .tabs {
   display: flex;
   gap: var(--spacing-sm);
-  border-bottom: 1px solid #e4e4e4;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-sm);
 }
@@ -137,5 +216,17 @@ watch(userRole, () => {
   background-color: var(--lavender);
   color: var(--light);
   font-weight: 600;
+}
+
+.version-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.9rem;
+}
+
+.version-switch select {
+  width: auto;
 }
 </style>

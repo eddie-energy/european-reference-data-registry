@@ -96,6 +96,22 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /reference-data-objects/{id}/versions/{versionId}:
+    delete:
+      tags: [ ReferenceData ]
+      operationId: deleteVersion
+      summary: Delete a draft version (not allowed if it's the object's only version)
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /reference-data-objects/{id}/versions/{versionId}/publish:
     post:
       tags: [ ReferenceData ]

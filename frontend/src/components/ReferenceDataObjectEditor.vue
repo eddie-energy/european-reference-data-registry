@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   referenceDataObject,
@@ -10,11 +10,13 @@ import {
   createVersion,
   publishVersion,
   deleteReferenceDataObject,
+  deleteVersion,
   unlinkField,
   reorderFields,
 } from '@/api'
 import FieldForm from '@/components/FieldForm.vue'
 import ButtonLink from '@/components/ButtonLink.vue'
+import VersionTable from '@/components/VersionTable.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import type { components } from '@/schema'
@@ -43,27 +45,87 @@ const isDraftMode = computed(() =>
 
 const canDeleteObject = computed(() => !hasFields.value || isDraftMode.value)
 
+const canDeleteDraftVersion = computed(
+  () => !!draftVersion.value && (referenceDataObject.value?.versions.length ?? 0) > 1,
+)
+
+const submitting = ref(false)
+
 const startNewVersion = async () => {
-  await createVersion(id)
-  await load()
+  submitting.value = true
+  try {
+    const { error } = await createVersion(id)
+    if (error) {
+      danger(error.message ?? 'Failed to start new version')
+      return
+    }
+    await load()
+  } finally {
+    submitting.value = false
+  }
 }
 
 const publish = async () => {
   if (!draftVersion.value) return
-  await publishVersion(id, draftVersion.value.id)
-  await load()
+  if (
+    !(await confirm(
+      'Publish version',
+      `Publish version ${draftVersion.value.versionCode}? It will become visible to all users and can't be unpublished.`,
+    ))
+  )
+    return
+  submitting.value = true
+  try {
+    const { error } = await publishVersion(id, draftVersion.value.id)
+    if (error) {
+      danger(error.message ?? 'Failed to publish version')
+      return
+    }
+    success(`Version ${draftVersion.value.versionCode} published`)
+    await load()
+  } finally {
+    submitting.value = false
+  }
+}
+
+const deleteDraftVersion = async () => {
+  if (!draftVersion.value) return
+  if (
+    !(await confirm(
+      'Delete draft version',
+      `Delete draft version ${draftVersion.value.versionCode}? Fields only used in this draft will be removed. This cannot be undone.`,
+    ))
+  )
+    return
+  submitting.value = true
+  try {
+    const { error } = await deleteVersion(id, draftVersion.value.id)
+    if (error) {
+      danger(error.message ?? 'Failed to delete draft version')
+      return
+    }
+    success(`Draft version ${draftVersion.value.versionCode} deleted`)
+    await load()
+  } finally {
+    submitting.value = false
+  }
 }
 
 const deleteField = async (fieldId: string, fieldName: string) => {
   if (!draftVersion.value) return
   if (!(await confirm('Delete field', `Delete "${fieldName}"? This cannot be undone.`))) return
-  const { error } = await unlinkField(id, draftVersion.value.id, fieldId)
-  if (error) {
-    danger(error.message ?? 'Failed to delete field')
-    return
+  submitting.value = true
+  try {
+    const { error } = await unlinkField(id, draftVersion.value.id, fieldId)
+    if (error) {
+      danger(error.message ?? 'Failed to delete field')
+      return
+    }
+    success(`Field "${fieldName}" deleted`)
+    await load()
+  } finally {
+    submitting.value = false
   }
-  success(`Field "${fieldName}" deleted`)
-  await load()
 }
 
 const moveField = async (fieldId: string, direction: 'left' | 'right') => {
@@ -84,12 +146,17 @@ const moveField = async (fieldId: string, direction: 'left' | 'right') => {
   })
   const fieldIds = reordered.map((field) => field.id)
 
-  const { error } = await reorderFields(id, draftVersion.value.id, fieldIds)
-  if (error) {
-    danger(error.message ?? 'Failed to reorder fields')
-    return
+  submitting.value = true
+  try {
+    const { error } = await reorderFields(id, draftVersion.value.id, fieldIds)
+    if (error) {
+      danger(error.message ?? 'Failed to reorder fields')
+      return
+    }
+    await load()
+  } finally {
+    submitting.value = false
   }
-  await load()
 }
 
 const deleteObject = async () => {
@@ -141,11 +208,10 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
   <section class="editor">
     <h2>Edit</h2>
     <ButtonLink
+      v-if="canDeleteObject"
       component="button"
       buttonStyle="error-secondary"
       size="compact"
-      :disabled="!canDeleteObject"
-      :title="!canDeleteObject ? 'Remove all fields before deleting this object' : undefined"
       @click="deleteObject"
     >
       Delete reference data object
@@ -153,81 +219,101 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
 
     <template v-if="draftVersion">
       <p v-if="!draftVersion.fields.length" class="empty">No fields yet — add one below.</p>
-      <div v-else class="table-scroll">
-        <table>
-          <thead>
-            <tr class="version-row">
-              <th :colspan="draftVersion.fields.length + 1">
-                Version {{ draftVersion.versionCode }}
-                <span class="chip chip-draft">DRAFT</span>
-              </th>
-            </tr>
-            <tr>
-              <th>Country</th>
-              <th v-for="(field, index) in draftVersion.fields" :key="field.id">
-                <div class="field-header">
-                  <ButtonLink
-                    component="button"
-                    buttonStyle="tertiary"
-                    size="compact"
-                    :disabled="index === 0"
-                    title="Move left"
-                    @click="moveField(field.id, 'left')"
-                  >
-                    ◀
-                  </ButtonLink>
-                  <span class="field-name">
-                    {{ field.name }}
-                    <span v-if="field.mandatory" class="mandatory" title="Mandatory field">*</span>
-                  </span>
-                  <span
-                    class="field-type"
-                    :title="field.dataType === 'ENUM' ? optionNames(field) : undefined"
-                  >
-                    {{ field.dataType }}
-                  </span>
-                  <ButtonLink
-                    component="button"
-                    buttonStyle="tertiary"
-                    size="compact"
-                    :disabled="index === draftVersion.fields.length - 1"
-                    title="Move right"
-                    @click="moveField(field.id, 'right')"
-                  >
-                    ▶
-                  </ButtonLink>
-                  <ButtonLink
-                    component="button"
-                    buttonStyle="error-secondary"
-                    size="compact"
-                    @click="deleteField(field.id, field.name)"
-                  >
-                    Delete
-                  </ButtonLink>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>AUT</td>
-              <td v-for="field in draftVersion.fields" :key="field.id">
-                {{ sampleValue(field) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <VersionTable
+        v-else
+        :version-code="draftVersion.versionCode"
+        publish-state="DRAFT"
+        :colspan="draftVersion.fields.length + 1"
+      >
+        <template #header>
+          <tr>
+            <th>Country</th>
+            <th v-for="(field, index) in draftVersion.fields" :key="field.id">
+              <div class="field-header">
+                <ButtonLink
+                  component="button"
+                  buttonStyle="tertiary"
+                  size="compact"
+                  :disabled="index === 0 || submitting"
+                  title="Move left"
+                  @click="moveField(field.id, 'left')"
+                >
+                  ◀
+                </ButtonLink>
+                <span class="field-name">
+                  {{ field.name }}
+                  <span v-if="field.mandatory" class="mandatory" title="Mandatory field">*</span>
+                </span>
+                <span
+                  class="field-type"
+                  :title="field.dataType === 'ENUM' ? optionNames(field) : undefined"
+                >
+                  {{ field.dataType }}
+                </span>
+                <ButtonLink
+                  component="button"
+                  buttonStyle="tertiary"
+                  size="compact"
+                  :disabled="index === draftVersion.fields.length - 1 || submitting"
+                  title="Move right"
+                  @click="moveField(field.id, 'right')"
+                >
+                  ▶
+                </ButtonLink>
+                <ButtonLink
+                  component="button"
+                  buttonStyle="error-secondary"
+                  size="compact"
+                  :disabled="submitting"
+                  @click="deleteField(field.id, field.name)"
+                >
+                  Delete
+                </ButtonLink>
+              </div>
+            </th>
+          </tr>
+        </template>
+        <tr class="preview-row" title="Preview only — not saved data">
+          <td>AUT <span class="preview-label">(preview)</span></td>
+          <td v-for="field in draftVersion.fields" :key="field.id">
+            {{ sampleValue(field) }}
+          </td>
+        </tr>
+      </VersionTable>
 
       <FieldForm :id :version-id="draftVersion.id" @created="load" />
 
-      <ButtonLink component="button" buttonStyle="secondary" size="compact" @click="publish">
-        Publish version {{ draftVersion.versionCode }}
-      </ButtonLink>
+      <div class="draft-actions">
+        <ButtonLink
+          component="button"
+          buttonStyle="secondary"
+          size="compact"
+          :disabled="submitting"
+          @click="publish"
+        >
+          Publish version {{ draftVersion.versionCode }}
+        </ButtonLink>
+        <ButtonLink
+          v-if="canDeleteDraftVersion"
+          component="button"
+          buttonStyle="error-secondary"
+          size="compact"
+          :disabled="submitting"
+          @click="deleteDraftVersion"
+        >
+          Delete draft version {{ draftVersion.versionCode }}
+        </ButtonLink>
+      </div>
     </template>
 
     <template v-else>
-      <ButtonLink component="button" buttonStyle="secondary" size="compact" @click="startNewVersion">
+      <ButtonLink
+        component="button"
+        buttonStyle="secondary"
+        size="compact"
+        :disabled="submitting"
+        @click="startNewVersion"
+      >
         Start new version to add fields
       </ButtonLink>
     </template>
@@ -245,30 +331,20 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
   opacity: 0.7;
 }
 
-.table-scroll {
-  overflow-x: auto;
+.preview-row {
+  font-style: italic;
+  color: var(--dark);
+  opacity: 0.6;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+.preview-label {
+  font-style: normal;
+  font-size: 0.75rem;
 }
 
-th,
-td {
-  text-align: left;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid #e4e4e4;
-  white-space: nowrap;
-}
-
-.version-row th {
+.draft-actions {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  background-color: var(--surface-alt);
-  font-weight: 600;
+  gap: var(--spacing-md);
 }
 
 .field-header {

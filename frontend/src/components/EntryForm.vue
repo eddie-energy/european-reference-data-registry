@@ -2,10 +2,16 @@
 import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
+import { nations } from '@/constants/nations'
 
-const { fields, entry } = defineProps<{
+const {
+  fields,
+  entry,
+  submitting = false,
+} = defineProps<{
   fields: components['schemas']['FieldDto'][]
   entry?: components['schemas']['EntryDto']
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -87,10 +93,13 @@ const submit = () => {
       <span class="mandatory" title="Mandatory">*</span>
       <select v-model="nation">
         <option value="">—</option>
-        <option value="AUT">Austria</option>
-        <option value="FRA">France</option>
-        <option value="ESP">Spain</option>
-        <option value="GER">Germany</option>
+        <option
+          v-for="nationOption in nations"
+          :key="nationOption.value"
+          :value="nationOption.value"
+        >
+          {{ nationOption.label }}
+        </option>
       </select>
     </label>
     <label v-for="field in visibleFields" :key="field.id">
@@ -126,9 +135,9 @@ const submit = () => {
         component="button"
         buttonStyle="secondary"
         size="compact"
-        :disabled="!fields.length"
+        :disabled="!fields.length || submitting"
       >
-        Save entry
+        {{ submitting ? 'Saving…' : 'Save entry' }}
       </ButtonLink>
     </div>
   </form>

@@ -4,6 +4,7 @@ import { createField } from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
 import useToast from '@/composables/useToast'
+import { nations } from '@/constants/nations'
 
 const { id, versionId } = defineProps<{
   id: components['parameters']['ReferenceDataObjectId']
@@ -23,6 +24,7 @@ const nation = ref<components['schemas']['Nation'] | ''>('')
 const options = ref<string[]>([])
 const optionDraft = ref('')
 const errorMessage = ref('')
+const submitting = ref(false)
 
 const addOption = () => {
   const option = optionDraft.value.trim()
@@ -47,6 +49,7 @@ const submit = async () => {
     return
   }
 
+  submitting.value = true
   const { data, error } = await createField(id, versionId, {
     name: name.value,
     dataType: dataType.value,
@@ -54,6 +57,7 @@ const submit = async () => {
     ...(nation.value && { nation: nation.value }),
     ...(dataType.value === 'ENUM' && { options: options.value }),
   })
+  submitting.value = false
 
   if (!data) {
     errorMessage.value = error?.message ?? 'Failed to add field'
@@ -120,11 +124,14 @@ const submit = async () => {
     <label>
       Nation
       <select v-model="nation">
-        <option value="">—</option>
-        <option value="AUT">Austria</option>
-        <option value="FRA">France</option>
-        <option value="ESP">Spain</option>
-        <option value="GER">Germany</option>
+        <option value="">All nations</option>
+        <option
+          v-for="nationOption in nations"
+          :key="nationOption.value"
+          :value="nationOption.value"
+        >
+          {{ nationOption.label }}
+        </option>
       </select>
     </label>
     <label class="checkbox">
@@ -132,7 +139,9 @@ const submit = async () => {
       Mandatory
     </label>
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-    <ButtonLink component="button" buttonStyle="secondary" size="compact">Add field</ButtonLink>
+    <ButtonLink component="button" buttonStyle="secondary" size="compact" :disabled="submitting">
+      {{ submitting ? 'Adding…' : 'Add field' }}
+    </ButtonLink>
   </form>
 </template>
 

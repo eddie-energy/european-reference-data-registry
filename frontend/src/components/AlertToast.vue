@@ -46,7 +46,7 @@ const toastTypes: {
   },
   danger: {
     title: 'danger',
-    icon: InfoIcon,
+    icon: CrossIcon,
   },
 }
 
@@ -63,7 +63,7 @@ const progressBarDuration = `${duration}ms`
       type="button"
       v-if="canClose"
       @click="remove(id)"
-      :aria-label="'closeButton'"
+      aria-label="Close notification"
       class="close-button"
     >
       <CrossIcon />

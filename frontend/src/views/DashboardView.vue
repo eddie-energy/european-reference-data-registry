@@ -18,9 +18,13 @@ const visibleReferenceDataObjects = computed(() =>
 )
 
 const carouselConfig = computed(() => ({
-  itemsToShow,
+  itemsToShow: 1,
   gap: 64,
   wrapAround: (visibleReferenceDataObjects.value?.length ?? 0) > itemsToShow,
+  breakpoints: {
+    640: { itemsToShow: 2 },
+    1024: { itemsToShow: 3 },
+  },
 }))
 </script>
 
