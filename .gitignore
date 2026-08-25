@@ -39,3 +39,4 @@ out/
 ### Custom ###
 application-local.yaml
 backend/src/main/resources/public/
+backend/src/main/resources/templates/

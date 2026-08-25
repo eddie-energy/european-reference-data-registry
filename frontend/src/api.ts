@@ -1,21 +1,22 @@
 import createClient, { type Client } from 'openapi-fetch'
 import type { components, paths } from './schema'
+import { BASE_URL } from './config'
+import { keycloak } from './keycloak'
 
-export const BASE_URL = THYMELEAF_PUBLIC_URL ?? import.meta.env.VITE_BASE_URL
+export { BASE_URL }
 
 async function fetch(
   init?: RequestInit,
   skipContentType?: boolean,
 ): Promise<Client<paths, `${string}/${string}`>> {
-  //await keycloak.value?.updateToken(5)
-  //const token = keycloak.value?.token
+  await keycloak.value?.updateToken(5)
+  const token = keycloak.value?.token
   return createClient<paths>({
     baseUrl: `${BASE_URL}/api`,
     headers: {
       ...(!skipContentType && { 'Content-Type': 'application/json' }),
-      //Authorization: `Bearer ${token}`,
+      ...(token && { Authorization: `Bearer ${token}` }),
     },
-    credentials: 'include',
     ...init,
   })
 }

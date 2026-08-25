@@ -140,14 +140,33 @@ tasks.named("processResources") {
     dependsOn(copyApiSpec)
 }
 
+// index.html goes to templates/ (Thymeleaf renders it to inject the Keycloak settings),
+// every other build artefact is served as a plain static resource from public/.
 tasks.register<Copy>("buildFrontend") {
     group = "build"
     description = "Build the frontend into the Spring application for deployment"
     dependsOn(":frontend:build")
-    from("${project.rootDir}/frontend/dist")
+    from("${project.rootDir}/frontend/dist") {
+        exclude("index.html")
+    }
     into("${project.rootDir}/backend/src/main/resources/public")
+    // A stale index.html left by an earlier build would be picked up by Boot's welcome-page
+    // handler and shadow the Thymeleaf-rendered template.
+    doFirst {
+        delete("${project.rootDir}/backend/src/main/resources/public/index.html")
+    }
+}
+
+tasks.register<Copy>("buildFrontendTemplate") {
+    group = "build"
+    description = "Copies the frontend entry point into the Thymeleaf template directory"
+    dependsOn(":frontend:build")
+    from("${project.rootDir}/frontend/dist") {
+        include("index.html")
+    }
+    into("${project.rootDir}/backend/src/main/resources/templates")
 }
 
 tasks.named("processResources") {
-    dependsOn("buildFrontend")
+    dependsOn("buildFrontend", "buildFrontendTemplate")
 }

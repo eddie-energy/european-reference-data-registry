@@ -16,6 +16,9 @@ tags:
   - name: Entries
     description: Manage the data entries of a reference data object
 
+security:
+  - bearerAuth: [ ]
+
 paths:
   /reference-data-objects:
     get:
@@ -31,6 +34,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ReferenceDataObjectDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags: [ ReferenceData ]
       operationId: createReferenceDataObject
@@ -48,6 +53,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReferenceDataObjectDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}:
     get:
@@ -65,6 +72,8 @@ paths:
                 $ref: '#/components/schemas/ReferenceDataObjectDetail'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     delete:
       tags: [ ReferenceData ]
       operationId: deleteReferenceDataObject
@@ -78,6 +87,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions:
     post:
@@ -95,6 +106,8 @@ paths:
                 $ref: '#/components/schemas/ReferenceDataObjectVersionDetail'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}:
     delete:
@@ -111,6 +124,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}/publish:
     post:
@@ -129,6 +144,8 @@ paths:
                 $ref: '#/components/schemas/ReferenceDataObjectVersionDetail'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}/fields:
     post:
@@ -155,6 +172,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     put:
       tags: [ ReferenceData ]
       operationId: replaceVersionFields
@@ -179,6 +198,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}/fields/{fieldId}:
     delete:
@@ -201,6 +222,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}/fields/order:
     put:
@@ -227,6 +250,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}/entries:
     get:
@@ -251,6 +276,8 @@ paths:
                   $ref: '#/components/schemas/EntryDto'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags: [ Entries ]
       operationId: createEntry
@@ -275,6 +302,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/versions/{versionId}/entries/{entryId}:
     put:
@@ -305,6 +334,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /reference-data-objects/{id}/entries/{entryId}:
     delete:
@@ -319,8 +350,17 @@ paths:
           description: Deleted
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued access token
+
   parameters:
     ReferenceDataObjectId:
       name: id
@@ -345,6 +385,12 @@ components:
         format: uuid
 
   responses:
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     NotFound:
       description: Resource not found
       content:
