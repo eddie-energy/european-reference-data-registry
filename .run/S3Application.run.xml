@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="S3Application" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="ceeds-backend.backend.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="energy.eddie.s3.S3Application" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

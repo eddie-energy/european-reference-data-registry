@@ -33,6 +33,14 @@ springdoc:
   swagger-ui:
     url: /backend-api.yml
 
+keycloak:
+  realm:
+  authorization-uri:
+  token-uri:
+  client:
+  issuer-uri:
+  jwk-set-uri:
+
 backend:
   db:
     url: jdbc:postgresql://localhost:5440/backend
