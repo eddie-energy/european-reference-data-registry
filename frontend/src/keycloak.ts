@@ -1,6 +1,6 @@
 import Keycloak from 'keycloak-js'
 import { ref } from 'vue'
-import { BASE_URL } from './api'
+import { BASE_URL } from './config'
 
 export const keycloak = ref<Keycloak>()
 

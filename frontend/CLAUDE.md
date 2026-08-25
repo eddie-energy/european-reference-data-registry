@@ -32,8 +32,8 @@ Node/pnpm Gradle plugin.
 - **API layer (`src/api.ts`)**: all backend calls go through here using `openapi-fetch`, typed
   against the generated `src/schema.d.ts`. Each function wraps a single endpoint and returns
   `{ data?, error?, response }`. Never hand-edit `schema.d.ts` — it's regenerated from the OpenAPI
-  spec. `BASE_URL` resolves to `THYMELEAF_PUBLIC_URL` (injected server-side, see below) or falls
-  back to `VITE_BASE_URL` from `.env` for local dev.
+  spec. `BASE_URL` (from `src/config.ts`) resolves to `THYMELEAF_PUBLIC_URL` (injected server-side,
+  see below) or falls back to `VITE_BASE_URL` from `.env` for local dev.
 - **State (`src/stores/*.ts`)**: no Pinia — state is plain module-level `ref()`s exported directly
   (e.g. `referenceDataObjects`, `referenceDataObject` in `stores/referenceDataObject.ts`,
   `userRole` in `stores/userInfo.ts`). Views call the paired `update*()` function to refetch and
@@ -43,11 +43,18 @@ Node/pnpm Gradle plugin.
   create-object route redirects to `dashboard` unless `userRole === 'ceedsEntity'`). Role-gating
   in views (tabs, buttons) mirrors this same `userRole` check rather than a central permissions
   module.
-- **Server-injected config (`index.html`, `env.d.ts`)**: the app is served from a Spring Boot
-  Thymeleaf template. `index.html` has Thymeleaf comment-blocks injecting
+- **Server-injected config (`index.html`, `env.d.ts`, `src/config.ts`)**: the app is served from a
+  Spring Boot Thymeleaf template. `index.html` has Thymeleaf comment-blocks injecting
   `THYMELEAF_PUBLIC_URL` / `THYMELEAF_KEYCLOAK_*` globals at render time (declared in `env.d.ts`);
-  these are `undefined` in plain local dev, where `.env`'s `VITE_BASE_URL` is used instead.
-  Keycloak auth wiring is present but currently commented out in `src/api.ts`.
+  these are `undefined` in plain local dev, where `.env`'s `VITE_*` values are used instead.
+  `src/config.ts` owns `BASE_URL` and exists to keep `api.ts` and `keycloak.ts` from importing each
+  other in a cycle.
+- **Auth (`src/keycloak.ts`, `src/main.ts`, `src/api.ts`)**: `main.ts` awaits `login()` before
+  mounting, so the Keycloak-hosted login page is the app's login screen; failures render a visible
+  "Authentication failed" state rather than reloading. `api.ts` refreshes the token and attaches
+  `Authorization: Bearer …` to every request — the backend answers 401 without it. Local Keycloak is
+  the compose container on :8081 (realm `ceeds`, client `ceeds-frontend`, user `dev`/`dev`).
+  Roles are still self-selected via `stores/userInfo.ts`, not read from the token (issue #144).
 - **Styling**: no component library — `src/assets/main.css` defines the design system as CSS
   custom properties (spacing scale, color palette, shadows, radii, tint/text color pairs via
   `color-mix()`). Components use scoped `<style>` blocks that consume these variables (e.g.

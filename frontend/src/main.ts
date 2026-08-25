@@ -6,8 +6,26 @@ import { updateReferenceDataObjects } from './stores/referenceDataObject.ts'
 import useToast from './composables/useToast'
 import { keycloak, login } from './keycloak.ts'
 
+const showAuthenticationFailed = () => {
+  const root = document.querySelector('#app')
+  if (!root) {
+    return
+  }
+  root.innerHTML = `
+    <div class="auth-failed">
+      <h1>Authentication failed</h1>
+      <p>Could not sign you in. Check that the identity provider is reachable, then try again.</p>
+      <button type="button" id="auth-retry">Retry</button>
+    </div>
+  `
+  document.querySelector('#auth-retry')?.addEventListener('click', () => {
+    globalThis.location.reload()
+  })
+}
+
 try {
   await login()
+
   if (keycloak.value?.authenticated) {
     const app = createApp(App)
 
@@ -21,8 +39,9 @@ try {
 
     app.mount('#app')
   } else {
-    globalThis.location.reload()
+    showAuthenticationFailed()
   }
-} catch {
-  console.log('Authentication failed')
+} catch (e) {
+  console.error('Authentication failed', e)
+  showAuthenticationFailed()
 }

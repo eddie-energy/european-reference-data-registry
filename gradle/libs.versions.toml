@@ -32,16 +32,19 @@ mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.re
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "spring-boot" }
 spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "spring-boot" }
+spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+spring-boot-starter-thymeleaf = { module = "org.springframework.boot:spring-boot-starter-thymeleaf", version.ref = "spring-boot" }
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "spring-boot" }
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
+spring-security-test = { module = "org.springframework.security:spring-security-test" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 [bundles]
 flyway-runtime = ["flyway-core", "flyway-database-postgresql"]
 jackson-impl = ["jackson-databind-nullable", "jackson-dataformat-xml", "jackson-jakarta-xmlbind-annotations"]
-spring-impl = ["spring-boot-starter-actuator", "spring-boot-starter-data-jpa", "spring-boot-starter-web"]
-spring-test-impl = ["spring-boot-starter-test"]
+spring-impl = ["spring-boot-starter-actuator", "spring-boot-starter-data-jpa", "spring-boot-starter-oauth2-resource-server", "spring-boot-starter-thymeleaf", "spring-boot-starter-web"]
+spring-test-impl = ["spring-boot-starter-test", "spring-security-test"]
 
 [plugins]
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone" }

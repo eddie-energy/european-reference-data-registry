@@ -1,0 +1,52 @@
+{
+  "realm": "ceeds",
+  "enabled": true,
+  "displayName": "CEEDS",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "ceeds-frontend",
+      "name": "CEEDS Frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:8080",
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:8080/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "ceeds",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ceeds@insiemse.eddie",
+      "firstName": "CEEDS",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ceeds",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

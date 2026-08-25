@@ -1,6 +1,8 @@
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.testing.Test
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.*
 
 plugins {
@@ -143,9 +145,24 @@ tasks.named("processResources") {
 tasks.register<Copy>("buildFrontend") {
     group = "build"
     description = "Build the frontend into the Spring application for deployment"
+
     dependsOn(":frontend:build")
+
     from("${project.rootDir}/frontend/dist")
     into("${project.rootDir}/backend/src/main/resources/public")
+
+    doLast {
+        val source = file("${project.rootDir}/backend/src/main/resources/public/index.html")
+        val target = file("${project.rootDir}/backend/src/main/resources/templates/index.html")
+
+        target.parentFile.mkdirs()
+
+        Files.move(
+            source.toPath(),
+            target.toPath(),
+            StandardCopyOption.REPLACE_EXISTING
+        )
+    }
 }
 
 tasks.named("processResources") {

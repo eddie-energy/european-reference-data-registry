@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { userRole } from '@/stores/userInfo'
+import { logout } from '@/keycloak'
 
 const swaggerUrl = `${import.meta.env.VITE_BASE_URL}/swagger-ui.html`
 
@@ -26,7 +27,7 @@ const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntity', 'dataspace
           </option>
         </select>
       </div>
-      <button type="button" class="sign-out">Sign Out</button>
+      <button type="button" class="sign-out" @click="logout">Sign Out</button>
     </div>
   </aside>
 </template>
