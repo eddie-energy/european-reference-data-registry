@@ -33,7 +33,6 @@ public class SecurityConfig {
         "/backend-api.yml",
         "/actuator/health",
         "/actuator/health/**",
-        // SPA deep links served by UiController: any path segment without a dot.
         "/{a:[^.]*}",
         "/{a:[^.]*}/{b:[^.]*}"
     };
@@ -47,8 +46,6 @@ public class SecurityConfig {
         return http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Order matters: the SPA deep-link patterns below also match /api/... paths,
-                // so the API rule has to be evaluated first.
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/api/**")
                         .authenticated()
                         .requestMatchers(PUBLIC_PATHS)

@@ -80,10 +80,10 @@ that file, not in the admin console.
 
 ## Frontend-in-backend packaging
 
-The backend serves the built Vue app. `buildFrontend` copies `frontend/dist` (minus `index.html`) →
-`backend/src/main/resources/public`; `buildFrontendTemplate` copies `index.html` →
+The backend serves the built Vue app: the `buildFrontend` Gradle task runs `:frontend:build`, copies
+`frontend/dist` → `backend/src/main/resources/public`, then moves `index.html` on into
 `backend/src/main/resources/templates`, where **Thymeleaf renders it** to inject the Keycloak host,
-realm and client at request time (`controllers/UiController.java`). `processResources` depends on both.
+realm and client at request time (`controllers/UiController.java`). `processResources` depends on it.
 So `:backend:build` / `:backend:bootRun` rebuild and bundle the frontend automatically. **Pressing
 Play on `S3Application` in the IDE only refreshes the bundled frontend if IntelliJ is set to build via
 Gradle** (Settings → Build Tools → Gradle → "Build and run using: Gradle"); otherwise run
