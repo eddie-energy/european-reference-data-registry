@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
 import { nations } from '@/constants/nations'
+import { ndsfNations, userRole } from '@/stores/userInfo'
 
 const {
   fields,
@@ -17,7 +18,7 @@ const {
 const emit = defineEmits<{
   submit: [
     payload: {
-      nation: components['schemas']['Nation']
+      nation?: components['schemas']['Nation']
       values: components['schemas']['EntryValueDto'][]
     },
   ]
@@ -25,6 +26,14 @@ const emit = defineEmits<{
 }>()
 
 const nation = ref<components['schemas']['Nation'] | ''>(entry?.nation ?? '')
+
+const mayOmitNation = computed(() => userRole.value === 'operationalEntity')
+
+const nationOptions = computed(() =>
+  mayOmitNation.value
+    ? nations
+    : nations.filter((option) => ndsfNations.value.includes(option.value)),
+)
 
 const visibleFields = computed(() =>
   fields.filter((field) => !field.nation || field.nation === nation.value),
@@ -68,7 +77,7 @@ const toValue = (
 
 const submit = () => {
   errorMessage.value = ''
-  if (!nation.value) {
+  if (!nation.value && !mayOmitNation.value) {
     errorMessage.value = 'Select a country'
     return
   }
@@ -82,7 +91,7 @@ const submit = () => {
     errorMessage.value = `"${invalidNumber.name}" must be a number`
     return
   }
-  emit('submit', { nation: nation.value, values: visibleFields.value.map(toValue) })
+  emit('submit', { nation: nation.value || undefined, values: visibleFields.value.map(toValue) })
 }
 </script>
 
@@ -90,11 +99,13 @@ const submit = () => {
   <form class="entry-form" @submit.prevent="submit">
     <label>
       Country
-      <span class="mandatory" title="Mandatory">*</span>
+      <span v-if="!mayOmitNation" class="mandatory" title="Mandatory">*</span>
       <select v-model="nation">
-        <option value="">—</option>
+        <option value="" :disabled="!mayOmitNation">
+          {{ mayOmitNation ? 'All countries' : '—' }}
+        </option>
         <option
-          v-for="nationOption in nations"
+          v-for="nationOption in nationOptions"
           :key="nationOption.value"
           :value="nationOption.value"
         >
@@ -119,7 +130,7 @@ const submit = () => {
       />
     </label>
     <p v-if="!fields.length" class="hint">This version has no fields yet.</p>
-    <p v-else-if="nation && !visibleFields.length" class="hint">No fields for this country yet.</p>
+    <p v-else-if="!visibleFields.length" class="hint">No fields for this country yet.</p>
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     <div class="actions">
       <ButtonLink

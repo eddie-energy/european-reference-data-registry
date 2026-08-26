@@ -49,7 +49,7 @@ const deleteObject = async () => {
 }
 
 const visibleVersions = computed(() =>
-  userRole.value === 'ceedsEntity'
+  userRole.value === 'operationalEntity'
     ? versions
     : versions.filter((version) => version.publishState === 'PUBLISHED'),
 )
@@ -64,7 +64,7 @@ const hasChanges = computed(
 const iconAccentClass = computed(() => {
   if (hasChanges.value) return 'accent-lavender'
   if (latestVersion.value?.publishState === 'PUBLISHED') return 'accent-teal'
-  return userRole.value === 'ceedsEntity' ? 'accent-peach' : 'accent-turquiese'
+  return userRole.value === 'operationalEntity' ? 'accent-peach' : 'accent-turquiese'
 })
 </script>
 
@@ -75,7 +75,7 @@ const iconAccentClass = computed(() => {
     </div>
     <h3 class="name">{{ name }}</h3>
     <p>{{ description }}</p>
-    <p v-if="userRole === 'ceedsEntity' && latestVersion" class="version-info">
+    <p v-if="userRole === 'operationalEntity' && latestVersion" class="version-info">
       <template v-if="hasChanges">
         Version {{ latestPublishedVersion!.versionCode }} ({{ latestVersion.versionCode }})
         <span class="chip chip-changes">HAS CHANGES</span>
@@ -92,7 +92,7 @@ const iconAccentClass = computed(() => {
     </p>
     <div class="actions">
       <ButtonLink
-        v-if="userRole === 'ceedsEntity'"
+        v-if="userRole === 'operationalEntity'"
         component="RouterLink"
         :to="{ path: `/reference-data-objects/${id}`, query: { tab: 'edit' } }"
         class="edit-button"
@@ -100,7 +100,7 @@ const iconAccentClass = computed(() => {
         Edit
       </ButtonLink>
       <ButtonLink
-        v-if="userRole === 'ceedsEntity'"
+        v-if="userRole === 'operationalEntity'"
         component="button"
         buttonStyle="error-secondary"
         class="delete-button"

@@ -17,7 +17,7 @@ const router = createRouter({
       name: 'reference-data-object-create',
       component: CreateReferenceDataObjectView,
       beforeEnter: () => {
-        if (userRole.value !== 'ceedsEntity') {
+        if (userRole.value !== 'operationalEntity') {
           return { name: 'dashboard' }
         }
       },

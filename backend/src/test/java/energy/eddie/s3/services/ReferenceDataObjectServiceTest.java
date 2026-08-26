@@ -20,6 +20,7 @@ import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
 import energy.eddie.s3.models.referencedata.EnumOption;
 import energy.eddie.s3.models.referencedata.Field;
+import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.models.referencedata.Nation;
 import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
@@ -29,6 +30,8 @@ import energy.eddie.s3.repositories.EntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
+import energy.eddie.s3.security.CurrentUser;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,6 +58,8 @@ class ReferenceDataObjectServiceTest {
     private EntryValueRepository entryValueRepository;
     @Mock
     private ReferenceDataObjectMapper mapper;
+    @Mock
+    private CurrentUser currentUser;
 
     @InjectMocks
     private ReferenceDataObjectService service;
@@ -203,6 +208,7 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void createField_onDraft_linksField() {
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var rdo = rdoWithId(id);
@@ -224,6 +230,7 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void createField_enumWithOptions_persistsOptionsAndNation() {
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
@@ -252,6 +259,7 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void createField_enumWithoutOptions_throwsConflict() {
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
@@ -268,6 +276,7 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void createField_nonEnumWithOptions_throwsConflict() {
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
@@ -285,6 +294,7 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void createField_enumWithDuplicateOption_throwsConflict() {
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
@@ -302,6 +312,7 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void createField_enumWithBlankOption_throwsConflict() {
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
@@ -750,4 +761,108 @@ class ReferenceDataObjectServiceTest {
         assertThatThrownBy(() -> service.reorderFields(UUID.randomUUID(), versionId, List.of()))
                 .isInstanceOf(NotFoundException.class);
     }
+    @Test
+    void createField_asNdsfForOwnNation_linksField() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
+        var savedField = fieldWithId(UUID.randomUUID());
+        when(currentUser.mayMaintainFieldsFor(Nation.AUT)).thenReturn(true);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(fieldRepository.save(any())).thenReturn(savedField);
+        when(mapper.toFieldDto(savedField)).thenReturn(new FieldDto());
+
+        var request = new CreateFieldRequest()
+                .name("austria_grid_id")
+                .dataType(energy.eddie.s3.generated.model.DataType.TEXT)
+                .nation(energy.eddie.s3.generated.model.Nation.AUT);
+        service.createField(id, versionId, request);
+
+        assertThat(version.getFields()).containsExactly(savedField);
+    }
+
+    @Test
+    void createField_asNdsfForAnotherNation_throwsForbidden() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
+        when(currentUser.mayMaintainFieldsFor(Nation.GER)).thenReturn(false);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        var request = new CreateFieldRequest()
+                .name("german_grid_id")
+                .dataType(energy.eddie.s3.generated.model.DataType.TEXT)
+                .nation(energy.eddie.s3.generated.model.Nation.GER);
+
+        assertThatThrownBy(() -> service.createField(id, versionId, request))
+                .isInstanceOf(ForbiddenException.class);
+        verify(fieldRepository, never()).save(any());
+    }
+
+    @Test
+    void createField_asNdsfWithoutNation_throwsForbidden() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        var request = new CreateFieldRequest()
+                .name("shared_field")
+                .dataType(energy.eddie.s3.generated.model.DataType.TEXT);
+
+        assertThatThrownBy(() -> service.createField(id, versionId, request))
+                .isInstanceOf(ForbiddenException.class);
+        verify(fieldRepository, never()).save(any());
+    }
+
+    @Test
+    void getAll_asNdsf_keepsDrafts() {
+        var rdo = rdoWithId(UUID.randomUUID());
+        when(currentUser.isNdsf()).thenReturn(true);
+        when(referenceDataObjectRepository.findAll()).thenReturn(List.of(rdo));
+        when(mapper.toDetail(rdo)).thenReturn(detailWith(energy.eddie.s3.generated.model.PublishState.DRAFT));
+
+        assertThat(service.getAll()).hasSize(1);
+    }
+
+    @Test
+    void getAll_hidesObjectsWithoutAPublishedVersion() {
+        var rdo = rdoWithId(UUID.randomUUID());
+        when(referenceDataObjectRepository.findAll()).thenReturn(List.of(rdo));
+        when(mapper.toDetail(rdo)).thenReturn(detailWith(energy.eddie.s3.generated.model.PublishState.DRAFT));
+
+        assertThat(service.getAll()).isEmpty();
+    }
+
+    @Test
+    void getAll_asOperationalEntity_keepsDrafts() {
+        var rdo = rdoWithId(UUID.randomUUID());
+        when(currentUser.isOperationalEntity()).thenReturn(true);
+        when(referenceDataObjectRepository.findAll()).thenReturn(List.of(rdo));
+        when(mapper.toDetail(rdo)).thenReturn(detailWith(energy.eddie.s3.generated.model.PublishState.DRAFT));
+
+        assertThat(service.getAll()).hasSize(1);
+    }
+
+    @Test
+    void get_ofADraftOnlyObject_throwsNotFound() {
+        var id = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        when(referenceDataObjectRepository.findById(id)).thenReturn(Optional.of(rdo));
+        when(mapper.toDetail(rdo)).thenReturn(detailWith(energy.eddie.s3.generated.model.PublishState.DRAFT));
+
+        assertThatThrownBy(() -> service.get(id)).isInstanceOf(NotFoundException.class);
+    }
+
+    private static ReferenceDataObjectDetail detailWith(energy.eddie.s3.generated.model.PublishState state) {
+        return new ReferenceDataObjectDetail()
+                .versions(new ArrayList<>(List.of(new ReferenceDataObjectVersionDetail()
+                        .id(UUID.randomUUID())
+                        .versionCode(1)
+                        .publishState(state))));
+    }
+
 }

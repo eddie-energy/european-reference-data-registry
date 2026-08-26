@@ -1,6 +1,7 @@
 package energy.eddie.s3.controllers;
 
 import energy.eddie.s3.exceptions.ConflictException;
+import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.exceptions.NotFoundException;
 import energy.eddie.s3.generated.model.ErrorResponse;
 import javax.annotation.Nullable;
@@ -15,6 +16,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
     @ExceptionHandler(ConflictException.class)

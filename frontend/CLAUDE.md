@@ -36,11 +36,11 @@ Node/pnpm Gradle plugin.
   see below) or falls back to `VITE_BASE_URL` from `.env` for local dev.
 - **State (`src/stores/*.ts`)**: no Pinia — state is plain module-level `ref()`s exported directly
   (e.g. `referenceDataObjects`, `referenceDataObject` in `stores/referenceDataObject.ts`,
-  `userRole` in `stores/userInfo.ts`). Views call the paired `update*()` function to refetch and
+  `userRole` in `stores/userInfo.ts`, populated from `GET /api/me`). Views call the paired `update*()` function to refetch and
   mutate the ref; components import and read the ref directly rather than receiving it as a prop.
   `main.ts` eagerly loads `referenceDataObjects` before mounting.
 - **Routing (`src/router/index.ts`)**: route guards read `userRole.value` directly (e.g. the
-  create-object route redirects to `dashboard` unless `userRole === 'ceedsEntity'`). Role-gating
+  create-object route redirects to `dashboard` unless `userRole === 'operationalEntity'`). Role-gating
   in views (tabs, buttons) mirrors this same `userRole` check rather than a central permissions
   module.
 - **Server-injected config (`index.html`, `env.d.ts`, `src/config.ts`)**: the app is served from a
@@ -49,20 +49,24 @@ Node/pnpm Gradle plugin.
   these are `undefined` in plain local dev, where `.env`'s `VITE_*` values are used instead.
   `src/config.ts` owns `BASE_URL` and exists to keep `api.ts` and `keycloak.ts` from importing each
   other in a cycle.
-- **Auth (`src/keycloak.ts`, `src/main.ts`, `src/api.ts`)**: `main.ts` awaits `login()` before
-  mounting, so the Keycloak-hosted login page is the app's login screen; failures render a visible
-  "Authentication failed" state rather than reloading. `api.ts` refreshes the token and attaches
-  `Authorization: Bearer …` to every request — the backend answers 401 without it. Local Keycloak is
-  the compose container on :8081 (realm `ceeds`, client `ceeds-frontend`, user `dev`/`dev`).
-  Roles are still self-selected via `stores/userInfo.ts`, not read from the token (issue #144).
+- **Auth (`src/keycloak.ts`, `src/main.ts`, `src/api.ts`, `src/stores/userInfo.ts`)**: `main.ts`
+  awaits `initAuth()` (Keycloak `check-sso`) and then mounts **whether or not** you are signed in —
+  anonymous visitors browse as `viewer`. `keycloak.ts` also exports `login()`, `register()`,
+  `logout()` and `isAuthenticated()`; the sidebar shows Sign In / Create Account or the username plus
+  Sign Out. `api.ts` refreshes the token only when authenticated and attaches `Authorization:
+  Bearer …` when there is one — reads work without it, writes answer 401/403. The role comes from
+  `GET /api/me` via `updateUserInfo()`; `userRole` is `viewer | participant | ndsf | operationalEntity`
+  and per-nation NDSF scope is enforced by the backend, not the UI. Local Keycloak is the compose
+  container on :8081 (realm `ceeds`, client `ceeds-frontend`, user `ceeds`/`ceeds`).
 - **Styling**: no component library — `src/assets/main.css` defines the design system as CSS
   custom properties (spacing scale, color palette, shadows, radii, tint/text color pairs via
   `color-mix()`). Components use scoped `<style>` blocks that consume these variables (e.g.
   `var(--spacing-lg)`, `var(--lavender)`); keep new UI consistent with this token set rather than
   hardcoding values.
 - **Domain model**: a `ReferenceDataObject` has one or more `versions`, each with a
-  `publishState` (`DRAFT`/`PUBLISHED`) and a list of `fields`. Non-`ceedsEntity` roles only ever
-  see `PUBLISHED` versions/objects; `ceedsEntity` can create objects, start new draft versions,
+  `publishState` (`DRAFT`/`PUBLISHED`) and a list of `fields`. Roles below `operationalEntity` only
+  ever see `PUBLISHED` versions/objects — the backend filters drafts out; `operationalEntity` can
+  create objects, start new draft versions,
   add fields (`FieldForm.vue`), and publish.
 
 ## Conventions

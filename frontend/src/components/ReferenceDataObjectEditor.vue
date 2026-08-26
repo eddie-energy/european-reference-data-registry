@@ -19,6 +19,7 @@ import ButtonLink from '@/components/ButtonLink.vue'
 import VersionTable from '@/components/VersionTable.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
+import { userRole } from '@/stores/userInfo'
 import type { components } from '@/schema'
 
 const { id } = defineProps<{ id: components['parameters']['ReferenceDataObjectId'] }>()
@@ -43,10 +44,17 @@ const isDraftMode = computed(() =>
   (referenceDataObject.value?.versions ?? []).every((version) => version.publishState === 'DRAFT'),
 )
 
-const canDeleteObject = computed(() => !hasFields.value || isDraftMode.value)
+const isOperationalEntity = computed(() => userRole.value === 'operationalEntity')
+
+const canDeleteObject = computed(
+  () => isOperationalEntity.value && (!hasFields.value || isDraftMode.value),
+)
 
 const canDeleteDraftVersion = computed(
-  () => !!draftVersion.value && (referenceDataObject.value?.versions.length ?? 0) > 1,
+  () =>
+    isOperationalEntity.value &&
+    !!draftVersion.value &&
+    (referenceDataObject.value?.versions.length ?? 0) > 1,
 )
 
 const submitting = ref(false)
@@ -261,6 +269,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
                   ▶
                 </ButtonLink>
                 <ButtonLink
+                  v-if="isOperationalEntity"
                   component="button"
                   buttonStyle="error-secondary"
                   size="compact"
@@ -285,6 +294,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
 
       <div class="draft-actions">
         <ButtonLink
+          v-if="isOperationalEntity"
           component="button"
           buttonStyle="secondary"
           size="compact"

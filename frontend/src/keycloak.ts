@@ -10,21 +10,36 @@ const keycloakConfig = {
   clientId: THYMELEAF_KEYCLOAK_CLIENT ?? import.meta.env.VITE_KEYCLOAK_CLIENT,
 }
 
-export const login = async () => {
+const redirectUri = () => (import.meta.env.DEV ? globalThis.location.origin : BASE_URL)
+
+export const initAuth = async () => {
   keycloak.value = new Keycloak(keycloakConfig)
   await keycloak.value.init({
-    onLoad: 'login-required',
+    onLoad: 'check-sso',
     checkLoginIframe: false,
-    redirectUri: import.meta.env.DEV ? globalThis.location.origin : BASE_URL,
+    redirectUri: redirectUri(),
   })
-  // checkLoginIframe maybe needs to be set to true in prod.
-  localStorage.setItem('access-token', keycloak.value.token ?? '')
-  startTokenRefresh()
+  if (keycloak.value.authenticated) {
+    localStorage.setItem('access-token', keycloak.value.token ?? '')
+    startTokenRefresh()
+  } else {
+    localStorage.removeItem('access-token')
+  }
+}
+
+export const isAuthenticated = () => keycloak.value?.authenticated === true
+
+export const login = () => {
+  keycloak.value?.login({ redirectUri: redirectUri() })
+}
+
+export const register = () => {
+  keycloak.value?.register({ redirectUri: redirectUri() })
 }
 
 export const logout = () => {
-  keycloak.value!.logout()
   localStorage.removeItem('access-token')
+  keycloak.value?.logout({ redirectUri: redirectUri() })
 }
 
 const startTokenRefresh = () => {
@@ -34,16 +49,6 @@ const startTokenRefresh = () => {
       .then((refreshed) => {
         if (refreshed) {
           localStorage.setItem('access-token', keycloak.value!.token ?? '')
-        } else {
-          console.log(
-            'Token not refreshed, valid for ' +
-              Math.round(
-                (keycloak.value?.tokenParsed?.exp ?? 0) +
-                  (keycloak.value?.timeSkew ?? 0) -
-                  Date.now() / 1000,
-              ) +
-              ' seconds',
-          )
         }
         return refreshed
       })

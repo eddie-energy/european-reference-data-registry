@@ -14,9 +14,16 @@ import energy.eddie.s3.services.EntryService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
+import energy.eddie.s3.security.CeedsRole;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -37,6 +44,24 @@ class EntryRepositoryIntegrationTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @BeforeEach
+    void authenticateAsOperationalEntity() {
+        var jwt = Jwt.withTokenValue("test")
+                .header("alg", "none")
+                .claim("preferred_username", "operational-entity")
+                .build();
+        SecurityContextHolder.getContext()
+                .setAuthentication(new JwtAuthenticationToken(
+                        jwt,
+                        List.of(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())),
+                        "operational-entity"));
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void entryCreatedInV1_survivesIntoV2AndIsFlaggedIncomplete() {
         var rdo = new ReferenceDataObject("Tariffs", "desc");
@@ -46,8 +71,8 @@ class EntryRepositoryIntegrationTest {
         v1.getFields().add(name);
         var savedRdo = referenceDataObjectRepository.save(rdo);
 
-        var created = entryService.createEntry(savedRdo.getId(), v1.getId(), new UpsertEntryRequest(Nation.AUT, List.of(
-                new EntryValueDto(name.getId()).textValue("Vienna"))));
+        var created = entryService.createEntry(savedRdo.getId(), v1.getId(), new UpsertEntryRequest(List.of(
+                new EntryValueDto(name.getId()).textValue("Vienna"))).nation(Nation.AUT));
         assertThat(created.getComplete()).isTrue();
 
         var v2 = new ReferenceDataObjectVersion(savedRdo, 2, PublishState.DRAFT);
@@ -88,8 +113,8 @@ class EntryRepositoryIntegrationTest {
         var savedRdo = referenceDataObjectRepository.save(rdo);
         var optionId = savedField.getOptions().getFirst().getId();
 
-        var created = entryService.createEntry(savedRdo.getId(), version.getId(), new UpsertEntryRequest(Nation.AUT, List.of(
-                new EntryValueDto(savedField.getId()).enumOptionId(optionId))));
+        var created = entryService.createEntry(savedRdo.getId(), version.getId(), new UpsertEntryRequest(List.of(
+                new EntryValueDto(savedField.getId()).enumOptionId(optionId))).nation(Nation.AUT));
         entityManager.flush();
         entityManager.clear();
 
@@ -111,8 +136,8 @@ class EntryRepositoryIntegrationTest {
         version.getFields().add(unused);
         var savedRdo = referenceDataObjectRepository.save(rdo);
 
-        entryService.createEntry(savedRdo.getId(), version.getId(), new UpsertEntryRequest(Nation.AUT, List.of(
-                new EntryValueDto(used.getId()).textValue("Vienna"))));
+        entryService.createEntry(savedRdo.getId(), version.getId(), new UpsertEntryRequest(List.of(
+                new EntryValueDto(used.getId()).textValue("Vienna"))).nation(Nation.AUT));
         entityManager.flush();
 
         assertThat(entryValueRepository.existsByFieldId(used.getId())).isTrue();
