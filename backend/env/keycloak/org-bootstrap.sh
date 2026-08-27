@@ -22,7 +22,7 @@ json_field() {
 
 as_json_array() {
   if [ -z "$1" ]; then
-    printf '[]'
+    printf '[""]'
   else
     printf '["%s"]' "$(echo "$1" | sed 's/,/","/g')"
   fi
@@ -36,6 +36,10 @@ done
 
 echo "Enabling organizations on realm $REALM"
 $KCADM update "realms/$REALM" -s organizationsEnabled=true
+
+echo "Enabling organization default attributes listener on realm $REALM"
+$KCADM update events/config -r "$REALM" \
+  -s 'eventsListeners=["jboss-logging","org-default-attrs"]'
 
 echo "Reducing the registration form to username and password"
 $KCADM update "users/profile" -r "$REALM" -f - <<'PROFILE'
@@ -102,6 +106,17 @@ for entry in "${ORGANIZATIONS[@]}"; do
   fi
   eval "ORG_UUID_${alias}=$org_uuid"
 done
+
+echo "Backfilling organization default attributes"
+$KCADM get organizations -r "$REALM" --fields id \
+  | tr -d '\n ' | sed 's/},{/}\n/g' \
+  | while IFS= read -r organization_json; do
+    org_uuid=$(printf '%s' "$organization_json" | json_field id)
+    if [ -n "$org_uuid" ]; then
+      $KCADM get "organizations/$org_uuid" -r "$REALM" \
+        | $KCADM update "organizations/$org_uuid" -r "$REALM" -f -
+    fi
+  done
 
 for entry in "${MEMBERSHIPS[@]}"; do
   IFS='|' read -r username alias <<< "$entry"
