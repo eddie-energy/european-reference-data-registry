@@ -64,9 +64,9 @@ Node/pnpm Gradle plugin.
   `var(--spacing-lg)`, `var(--lavender)`); keep new UI consistent with this token set rather than
   hardcoding values.
 - **Domain model**: a `ReferenceDataObject` has one or more `versions`, each with a
-  `publishState` (`DRAFT`/`PUBLISHED`) and a list of `fields`. Roles below `operationalEntity` only
-  ever see `PUBLISHED` versions/objects — the backend filters drafts out; `operationalEntity` can
-  create objects, start new draft versions,
+  `publishState` (`DRAFT`/`PUBLISHED`) and a list of `fields`. `viewer` and `participant` only ever
+  see `PUBLISHED` versions/objects — the backend filters drafts out; `ndsf` also sees drafts (it adds
+  its national fields to them); `operationalEntity` can create objects, start new draft versions,
   add fields (`FieldForm.vue`), and publish.
 
 ## Conventions

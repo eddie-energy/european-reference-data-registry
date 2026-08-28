@@ -237,7 +237,7 @@ public class EntryService {
         if (!version.getReferenceDataObject().getId().equals(id)) {
             throw new NotFoundException("Version " + versionId + " does not belong to reference data object " + id);
         }
-        if (version.getPublishState() != PublishState.PUBLISHED && !currentUser.isOperationalEntity()) {
+        if (version.getPublishState() != PublishState.PUBLISHED && !currentUser.maySeeDrafts()) {
             throw new NotFoundException("Version " + versionId + " not found");
         }
         return version;

@@ -44,6 +44,10 @@ public class CurrentUser {
         return hasAuthority(CeedsRole.NDSF.authority());
     }
 
+    public boolean maySeeDrafts() {
+        return isOperationalEntity() || isNdsf();
+    }
+
     public boolean mayMaintainFieldsFor(@Nullable Nation nation) {
         return isOperationalEntity() || isNdsfFor(nation);
     }

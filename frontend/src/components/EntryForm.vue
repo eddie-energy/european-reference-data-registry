@@ -27,10 +27,12 @@ const emit = defineEmits<{
 
 const nation = ref<components['schemas']['Nation'] | ''>(entry?.nation ?? '')
 
-const mayOmitNation = computed(() => userRole.value === 'operationalEntity')
+const isOperationalEntity = computed(() => userRole.value === 'operationalEntity')
+
+const mayOmitNation = computed(() => isOperationalEntity.value && !entry?.nation)
 
 const nationOptions = computed(() =>
-  mayOmitNation.value
+  isOperationalEntity.value
     ? nations
     : nations.filter((option) => ndsfNations.value.includes(option.value)),
 )
@@ -78,7 +80,9 @@ const toValue = (
 const submit = () => {
   errorMessage.value = ''
   if (!nation.value && !mayOmitNation.value) {
-    errorMessage.value = 'Select a country'
+    errorMessage.value = entry?.nation
+      ? 'This entry has country-specific values and cannot be changed to all countries'
+      : 'Select a country'
     return
   }
   const invalidNumber = visibleFields.value.find(

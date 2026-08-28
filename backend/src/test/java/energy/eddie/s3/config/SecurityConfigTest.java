@@ -112,6 +112,13 @@ class SecurityConfigTest {
     }
 
     @Test
+    void versionCreateAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(post("/api/reference-data-objects/{id}/versions", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority()))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void fieldDeleteAsNdsf_isForbidden() throws Exception {
         mockMvc.perform(delete(
                                 "/api/reference-data-objects/{id}/versions/{versionId}/fields/{fieldId}", ID, ID, ID)

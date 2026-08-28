@@ -52,7 +52,7 @@ class EntryServiceTest {
 
     @BeforeEach
     void grantOperationalEntity() {
-        lenient().when(currentUser.isOperationalEntity()).thenReturn(true);
+        lenient().when(currentUser.maySeeDrafts()).thenReturn(true);
         lenient().when(currentUser.mayMaintainEntriesFor(any())).thenReturn(true);
     }
 
@@ -154,11 +154,23 @@ class EntryServiceTest {
     }
 
     @Test
-    void listEntries_ofADraftVersion_isNotFoundForNonOperationalEntities() {
-        when(currentUser.isOperationalEntity()).thenReturn(false);
+    void listEntries_ofADraftVersion_isNotFoundForRolesThatDoNotSeeDrafts() {
+        when(currentUser.maySeeDrafts()).thenReturn(false);
         mockVersion(version(rdo()));
 
         assertThatThrownBy(() -> service.listEntries(OBJECT_ID, VERSION_ID)).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void listEntries_ofADraftVersion_isAllowedForRolesThatSeeDrafts() {
+        var rdo = rdo();
+        var draft = version(rdo);
+        mockVersion(draft);
+        mockAllVersionsDesc(draft);
+        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID))
+                .thenReturn(List.of());
+
+        assertThat(service.listEntries(OBJECT_ID, VERSION_ID)).isEmpty();
     }
 
     private static ReferenceDataObjectVersion publishedVersion(ReferenceDataObject rdo, Field... fields) {

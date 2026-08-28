@@ -333,6 +333,7 @@ class ReferenceDataObjectServiceTest {
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
+        when(currentUser.isOperationalEntity()).thenReturn(true);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
 
         var request = new CreateFieldRequest()
@@ -341,6 +342,24 @@ class ReferenceDataObjectServiceTest {
                 .mandatory(true);
         assertThatThrownBy(() -> service.createField(id, versionId, request))
                 .isInstanceOf(ConflictException.class);
+        verify(fieldRepository, never()).save(any());
+    }
+
+    @Test
+    void createField_onPublished_asNdsfForAnotherNation_throwsForbiddenNotConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
+        when(currentUser.mayMaintainFieldsFor(Nation.GER)).thenReturn(false);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        var request = new CreateFieldRequest()
+                .name("german_grid_id")
+                .dataType(energy.eddie.s3.generated.model.DataType.TEXT)
+                .nation(energy.eddie.s3.generated.model.Nation.GER);
+
+        assertThatThrownBy(() -> service.createField(id, versionId, request))
+                .isInstanceOf(ForbiddenException.class);
         verify(fieldRepository, never()).save(any());
     }
 
@@ -821,7 +840,7 @@ class ReferenceDataObjectServiceTest {
     @Test
     void getAll_asNdsf_keepsDrafts() {
         var rdo = rdoWithId(UUID.randomUUID());
-        when(currentUser.isNdsf()).thenReturn(true);
+        when(currentUser.maySeeDrafts()).thenReturn(true);
         when(referenceDataObjectRepository.findAll()).thenReturn(List.of(rdo));
         when(mapper.toDetail(rdo)).thenReturn(detailWith(energy.eddie.s3.generated.model.PublishState.DRAFT));
 
@@ -840,7 +859,7 @@ class ReferenceDataObjectServiceTest {
     @Test
     void getAll_asOperationalEntity_keepsDrafts() {
         var rdo = rdoWithId(UUID.randomUUID());
-        when(currentUser.isOperationalEntity()).thenReturn(true);
+        when(currentUser.maySeeDrafts()).thenReturn(true);
         when(referenceDataObjectRepository.findAll()).thenReturn(List.of(rdo));
         when(mapper.toDetail(rdo)).thenReturn(detailWith(energy.eddie.s3.generated.model.PublishState.DRAFT));
 

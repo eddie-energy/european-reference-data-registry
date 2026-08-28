@@ -69,24 +69,26 @@ public class ReferenceDataObjectService {
 
     @Transactional(readOnly = true)
     public List<ReferenceDataObjectDetail> getAll() {
+        var seesDrafts = currentUser.maySeeDrafts();
         return referenceDataObjectRepository.findAll().stream()
                 .map(mapper::toDetail)
-                .map(this::withVisibleVersions)
+                .map(detail -> withVisibleVersions(detail, seesDrafts))
                 .filter(detail -> !detail.getVersions().isEmpty())
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ReferenceDataObjectDetail get(UUID id) {
-        var detail = withVisibleVersions(mapper.toDetail(findReferenceDataObject(id)));
+        var detail = withVisibleVersions(mapper.toDetail(findReferenceDataObject(id)), currentUser.maySeeDrafts());
         if (detail.getVersions().isEmpty()) {
             throw new NotFoundException("Reference data object " + id + " not found");
         }
         return detail;
     }
 
-    private ReferenceDataObjectDetail withVisibleVersions(ReferenceDataObjectDetail detail) {
-        if (currentUser.isOperationalEntity() || currentUser.isNdsf()) {
+    private static ReferenceDataObjectDetail withVisibleVersions(
+            ReferenceDataObjectDetail detail, boolean seesDrafts) {
+        if (seesDrafts) {
             return detail;
         }
         detail.setVersions(detail.getVersions().stream()
@@ -129,10 +131,10 @@ public class ReferenceDataObjectService {
     @Transactional
     public FieldDto createField(UUID id, UUID versionId, CreateFieldRequest request) {
         var version = findVersion(id, versionId);
+        requireFieldMaintainer(toNation(request.getNation()));
         if (version.getPublishState() == PublishState.PUBLISHED) {
             throw new ConflictException("Cannot add fields to a published version");
         }
-        requireFieldMaintainer(toNation(request.getNation()));
         var saved = newField(
                 request.getName(),
                 request.getDataType(),

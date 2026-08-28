@@ -26,16 +26,20 @@ const showAuthenticationFailed = () => {
 
 try {
   await initAuth()
-  await updateUserInfo()
 
   const app = createApp(App)
 
-  const { error } = await updateReferenceDataObjects()
+  const { error: userInfoError } = await updateUserInfo()
+  const { error: referenceDataError } = await updateReferenceDataObjects()
 
   app.use(router)
 
-  if (error) {
-    useToast().danger(error.message ?? 'Failed to load reference data objects')
+  if (userInfoError) {
+    useToast().danger(userInfoError)
+  }
+
+  if (referenceDataError) {
+    useToast().danger(referenceDataError.message ?? 'Failed to load reference data objects')
   }
 
   app.mount('#app')

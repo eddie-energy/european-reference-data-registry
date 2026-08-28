@@ -34,10 +34,7 @@ public class SecurityConfig {
         "/api/reference-data-objects/*/entries/*"
     };
 
-    private static final String[] NDSF_WRITABLE_PATHS = {
-        "/api/reference-data-objects/*/versions",
-        "/api/reference-data-objects/*/versions/*/fields"
-    };
+    private static final String[] NDSF_FIELD_PATHS = {"/api/reference-data-objects/*/versions/*/fields"};
 
     private static final String[] PUBLIC_PATHS = {
         "/",
@@ -70,7 +67,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(ENTRY_PATHS)
                         .hasAnyRole(CeedsRole.NDSF.name(), CeedsRole.OPERATIONAL_ENTITY.name())
-                        .requestMatchers(HttpMethod.POST, NDSF_WRITABLE_PATHS)
+                        .requestMatchers(HttpMethod.POST, NDSF_FIELD_PATHS)
                         .hasAnyRole(CeedsRole.NDSF.name(), CeedsRole.OPERATIONAL_ENTITY.name())
                         .requestMatchers(REFERENCE_DATA_PATHS)
                         .hasRole(CeedsRole.OPERATIONAL_ENTITY.name())

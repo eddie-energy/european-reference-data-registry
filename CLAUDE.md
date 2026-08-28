@@ -101,8 +101,8 @@ place that reads `SecurityContextHolder`; services ask it, nothing else.
 |---|---|---|
 | `VIEWER` | anonymous | read published objects and their entries |
 | `PARTICIPANT` | any valid token | (API tokens — not built yet) |
-| `NDSF` | org attribute, per nation | create/update/delete entries **of its nations** |
-| `OPERATIONAL_ENTITY` | org attribute | manage objects, versions, fields; see drafts |
+| `NDSF` | org attribute, per nation | create/update/delete entries and add fields **of its nations**; see drafts |
+| `OPERATIONAL_ENTITY` | org attribute | manage objects, versions, fields; see drafts. **Only** role that creates versions |
 
 - Enforcement lives in `SecurityConfig`'s `authorizeHttpRequests` matchers, **not** `@PreAuthorize`:
   `@EnableMethodSecurity` JDK-proxies the controllers, and in a `@WebMvcTest` slice (no
@@ -112,9 +112,11 @@ place that reads `SecurityContextHolder`; services ask it, nothing else.
   reference-data-object rule.
 - The **nation** check cannot be expressed as a matcher (it depends on the request body or the stored
   entry), so `EntryService` calls `CurrentUser.mayMaintainEntriesFor` and throws `ForbiddenException`.
-- Reads filter drafts server-side: `ReferenceDataObjectService` drops non-`PUBLISHED` versions (and
-  objects left with none) unless the caller is Operational Entity, and `EntryService.findVersion`
-  404s on a draft version for everyone else.
+- Reads filter drafts server-side, and both services ask `CurrentUser.maySeeDrafts()` (Operational
+  Entity **or** NDSF — an NDSF has to reach a draft to add its national fields to it):
+  `ReferenceDataObjectService` drops non-`PUBLISHED` versions (and objects left with none) for
+  everyone else, and `EntryService.findVersion` 404s a draft version for them too. Keep the two in
+  step — if only one filters, the other's endpoint 404s on a version the caller was just shown.
 - The frontend uses `check-sso`, mounts whether or not you are signed in, and reads its role from
   `GET /api/me` (`frontend/src/stores/userInfo.ts`) — there is no self-selected role any more.
 

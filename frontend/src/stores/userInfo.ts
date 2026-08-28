@@ -26,19 +26,22 @@ export const username = ref('')
 export const ndsfNations = ref<Nation[]>([])
 export const organizations = ref<string[]>([])
 
-export const updateUserInfo = async () => {
+export const updateUserInfo = async (): Promise<{ error?: string }> => {
   if (!isAuthenticated()) {
     userRole.value = 'viewer'
     username.value = ''
     ndsfNations.value = []
     organizations.value = []
-    return
+    return {}
   }
 
-  const { data } = await getCurrentUser()
+  const { data, error } = await getCurrentUser().catch((e: unknown) => ({
+    data: undefined,
+    error: { message: e instanceof Error ? e.message : String(e) },
+  }))
   if (!data) {
     userRole.value = 'viewer'
-    return
+    return { error: error?.message ?? 'Failed to load your user information' }
   }
 
   username.value = data.username
@@ -47,4 +50,5 @@ export const updateUserInfo = async () => {
   userRole.value = data.roles
     .map((role) => ROLE_BY_API_VALUE[role])
     .reduce((highest, role) => (ROLE_RANK[role] > ROLE_RANK[highest] ? role : highest), 'viewer')
+  return {}
 }
