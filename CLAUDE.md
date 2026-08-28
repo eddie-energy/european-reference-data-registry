@@ -61,22 +61,64 @@ per field. An entry carries an optional `nation`; a field applies to an entry wh
   file aborts context load with "checksum mismatch". Add a new `V1_x__*.sql` instead, even for a
   feature that hasn't merged yet, if its earlier migration has run against any local DB.
 
-## Authentication
+## Authentication & authorization
 
 Keycloak runs in the same compose file on **port 8081**, realm `ceeds`, public client `ceeds-frontend`,
-seeded dev user `dev`/`dev`. The realm is provisioned from `backend/env/keycloak/ceeds-realm.json` via
-`start-dev --import-realm`, so it is re-imported on every container start — change the realm by editing
-that file, not in the admin console.
+seeded dev user `ceeds`/`ceeds`. The realm is provisioned from `backend/env/keycloak/ceeds-realm.json`
+via `start-dev --import-realm`, so it is re-imported on every container start — change the realm by
+editing that file, not in the admin console. Self-registration is on and the registration form is
+reduced to username + password.
 
-- The frontend redirects to the Keycloak login before mounting (`frontend/src/keycloak.ts`) and sends
-  the access token as a bearer header on every API call (`frontend/src/api.ts`).
-- The backend is an OAuth2 resource server (`config/SecurityConfig.java`): **`/api/**` requires a valid
-  JWT and answers 401 with an `ErrorResponse` body otherwise**. Public: the SPA shell and its assets,
-  `/swagger-ui/**`, `/backend-api.yml`, `/actuator/health`. Everything else is denied.
-- Rule ordering matters in `SecurityConfig` — the SPA deep-link patterns (`/{a}/{b}`) also match
-  `/api/...`, so the `/api/**` rule must be declared first.
-- Roles are **not** derived from the token yet (`frontend/src/stores/userInfo.ts` still uses a
-  self-selected role); that is issue #144.
+Anything realm import cannot express lives in `backend/env/keycloak/org-bootstrap.sh`, run by the
+one-shot `keycloak-bootstrap` compose service after Keycloak reports healthy. It is idempotent and
+re-runs on every `docker compose up`.
+
+### Roles come from Keycloak Organizations
+
+Roles are assigned to **organizations**, not users (issue #144). An organization carries two
+attributes, `ceeds_role` (`NDSF` / `OPERATIONAL_ENTITY`, multivalued) and `ceeds_nations`
+(`AUT`/`FRA`/`ESP`/`GER`, only meaningful with `NDSF`, so an Operational Entity carries none). Seed
+org: `fhooe` = Operational Entity, with the `ceeds` user as its member — the dev login therefore has
+full rights. Change it by editing the `ORGANIZATIONS` array (`alias|name|domain|roles|nations`) in
+`org-bootstrap.sh` and re-running that service. A user's effective roles are the **union** over every organization they
+belong to.
+
+The organization membership mapper is configured with *add organization id* and *add organization
+attributes*, and the `organization` client scope is a **default** scope of `ceeds-frontend`, so the
+access token carries:
+
+```json
+"organization": { "fhooe": { "id": "…", "ceeds_role": ["NDSF"], "ceeds_nations": ["AUT"] } }
+```
+
+`security/OrganizationClaim` parses that (tolerating the list-shaped claim you get without those
+mapper options, and string-or-array attribute values); `security/OrganizationRolesConverter` turns it
+into authorities — `ROLE_PARTICIPANT` for every valid token, plus `ROLE_NDSF` /
+`ROLE_OPERATIONAL_ENTITY` and one `NDSF_NATION_<code>` per nation. `security/CurrentUser` is the only
+place that reads `SecurityContextHolder`; services ask it, nothing else.
+
+| Role | Who | May |
+|---|---|---|
+| `VIEWER` | anonymous | read published objects and their entries |
+| `PARTICIPANT` | any valid token | (API tokens — not built yet) |
+| `NDSF` | org attribute, per nation | create/update/delete entries and add fields **of its nations**; see drafts |
+| `OPERATIONAL_ENTITY` | org attribute | manage objects, versions, fields; see drafts. **Only** role that creates versions |
+
+- Enforcement lives in `SecurityConfig`'s `authorizeHttpRequests` matchers, **not** `@PreAuthorize`:
+  `@EnableMethodSecurity` JDK-proxies the controllers, and in a `@WebMvcTest` slice (no
+  `AopAutoConfiguration`) the proxies stop being registered as handlers, so every write 404s/405s.
+- Rule ordering matters — the SPA deep-link patterns (`/{a}/{b}`) also match `/api/...`, so every
+  `/api/**` rule must be declared before `PUBLIC_PATHS`, and the entry paths before the broader
+  reference-data-object rule.
+- The **nation** check cannot be expressed as a matcher (it depends on the request body or the stored
+  entry), so `EntryService` calls `CurrentUser.mayMaintainEntriesFor` and throws `ForbiddenException`.
+- Reads filter drafts server-side, and both services ask `CurrentUser.maySeeDrafts()` (Operational
+  Entity **or** NDSF — an NDSF has to reach a draft to add its national fields to it):
+  `ReferenceDataObjectService` drops non-`PUBLISHED` versions (and objects left with none) for
+  everyone else, and `EntryService.findVersion` 404s a draft version for them too. Keep the two in
+  step — if only one filters, the other's endpoint 404s on a version the caller was just shown.
+- The frontend uses `check-sso`, mounts whether or not you are signed in, and reads its role from
+  `GET /api/me` (`frontend/src/stores/userInfo.ts`) — there is no self-selected role any more.
 
 ## Frontend-in-backend packaging
 
@@ -109,6 +151,10 @@ docker compose -f backend/env/docker-compose.yaml up -d   # postgres (:5440) + k
 
 ## Conventions & gotchas
 
+- **No explanatory comments.** Don't write Javadoc, block comments, or inline comments that restate
+  what the code does — in Java, TypeScript, SQL, shell, or anywhere else. Name things so the code
+  reads on its own. This applies to new code and to code you touch. OpenAPI `description:` fields and
+  the docs in this file are documentation, not code comments, and stay.
 - **NullAway** runs as an ERROR-level errorprone check over package `energy.eddie.s3` (generated code
   excluded). Annotate nullable fields/params/returns with `@Nullable`; a missed one fails the build,
   not just a warning.

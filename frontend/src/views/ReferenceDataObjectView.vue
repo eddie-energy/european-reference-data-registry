@@ -34,16 +34,20 @@ const load = async () => {
 onMounted(load)
 watch(() => id, load)
 
+const mayEditVersions = computed(
+  () => userRole.value === 'operationalEntity' || userRole.value === 'ndsf',
+)
+
 const visibleVersions = computed(() => {
   const versions = referenceDataObject.value?.versions ?? []
-  return userRole.value === 'ceedsEntity'
+  return mayEditVersions.value
     ? versions
     : versions.filter((version) => version.publishState === 'PUBLISHED')
 })
 
 const browseVersion = computed(() => {
   const versions = visibleVersions.value
-  if (userRole.value === 'ceedsEntity' && selectedVersionCode.value != null) {
+  if (mayEditVersions.value && selectedVersionCode.value != null) {
     const match = versions.find((version) => version.versionCode === selectedVersionCode.value)
     if (match) return match
   }
@@ -64,7 +68,7 @@ const versionSwitchModel = computed<number | undefined>({
 type TabKey = 'browse' | 'api' | 'process' | 'edit'
 
 const initialTab = (): TabKey =>
-  route.query.tab === 'edit' && userRole.value === 'ceedsEntity' ? 'edit' : 'browse'
+  route.query.tab === 'edit' && mayEditVersions.value ? 'edit' : 'browse'
 
 const activeTab = ref<TabKey>(initialTab())
 
@@ -74,28 +78,33 @@ const visibleTabs = computed(() => {
     { key: 'api', label: 'API' },
     { key: 'process', label: 'Process' },
   ]
-  if (userRole.value === 'ceedsEntity') {
+  if (mayEditVersions.value) {
     tabs.push({ key: 'edit', label: 'Edit' })
   }
   return tabs
 })
 
 watch(userRole, () => {
-  if (activeTab.value === 'edit' && userRole.value !== 'ceedsEntity') {
+  if (activeTab.value === 'edit' && !mayEditVersions.value) {
     activeTab.value = 'browse'
   }
-  if (userRole.value !== 'ceedsEntity') {
+  if (!mayEditVersions.value) {
     selectedVersionCode.value = undefined
   }
 })
 
 watch([activeTab, selectedVersionCode], ([tab, version]) => {
   const { version: _current, ...rest } = route.query
-  router.replace({ query: version == null ? {...rest, tab} : {
-      ...rest,
-      tab,
-      version: String(version)
-    } })
+  router.replace({
+    query:
+      version == null
+        ? { ...rest, tab }
+        : {
+            ...rest,
+            tab,
+            version: String(version),
+          },
+  })
 })
 </script>
 
@@ -123,7 +132,10 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
       </nav>
 
       <section v-if="activeTab === 'browse'">
-        <div v-if="userRole === 'ceedsEntity' && visibleVersions.length > 1" class="version-switch">
+        <div
+          v-if="mayEditVersions && visibleVersions.length > 1"
+          class="version-switch"
+        >
           <label for="versionSelect">Version</label>
           <select id="versionSelect" v-model.number="versionSwitchModel">
             <option
@@ -139,7 +151,11 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
           v-if="browseVersion"
           :id
           :version="browseVersion"
-          :editable="userRole === 'ceedsEntity' && isLatestBrowseVersion"
+          :editable="
+            isLatestBrowseVersion &&
+            (userRole === 'operationalEntity' ||
+              (userRole === 'ndsf' && browseVersion.publishState === 'PUBLISHED'))
+          "
         />
       </section>
 
@@ -147,7 +163,7 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
         <p>Coming soon.</p>
       </section>
 
-      <section v-else-if="activeTab === 'edit' && userRole === 'ceedsEntity'">
+      <section v-else-if="activeTab === 'edit' && mayEditVersions">
         <ReferenceDataObjectEditor :id />
       </section>
     </template>

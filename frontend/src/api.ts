@@ -9,7 +9,9 @@ async function fetch(
   init?: RequestInit,
   skipContentType?: boolean,
 ): Promise<Client<paths, `${string}/${string}`>> {
-  await keycloak.value?.updateToken(5)
+  if (keycloak.value?.authenticated) {
+    await keycloak.value.updateToken(5)
+  }
   const token = keycloak.value?.token
   return createClient<paths>({
     baseUrl: `${BASE_URL}/api`,
@@ -215,4 +217,12 @@ export async function deleteEntry(
   return (await fetch()).DELETE('/reference-data-objects/{id}/entries/{entryId}', {
     params: { path: { id, entryId } },
   })
+}
+
+export async function getCurrentUser(): Promise<{
+  data?: components['schemas']['CurrentUserDto']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).GET('/me')
 }

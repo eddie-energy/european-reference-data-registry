@@ -8,7 +8,7 @@ import { userRole } from '@/stores/userInfo'
 import { computed } from 'vue'
 
 const visibleReferenceDataObjects = computed(() =>
-  userRole.value === 'ceedsEntity'
+  userRole.value === 'operationalEntity'
     ? referenceDataObjects.value
     : referenceDataObjects.value?.filter((object) =>
         object.versions.some((version) => version.publishState === 'PUBLISHED'),
@@ -36,7 +36,7 @@ const carouselConfig = computed(() => ({
           <h2 class="carousel-title">Reference Data Entries</h2>
         </div>
         <ButtonLink
-          v-if="userRole === 'ceedsEntity'"
+          v-if="userRole === 'operationalEntity'"
           component="RouterLink"
           to="/reference-data-objects/create"
         >

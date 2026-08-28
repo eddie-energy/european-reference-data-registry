@@ -20,7 +20,9 @@ services:
       retries: 3
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.3
+    image: ceeds-keycloak:26.3.5
+    build:
+      context: ./keycloak
     command: [ "start-dev", "--import-realm" ]
     ports:
       - "8081:8080"
@@ -37,6 +39,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+
+  keycloak-bootstrap:
+    image: ceeds-keycloak:26.3.5
+    restart: "no"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_SERVER: http://keycloak:8080
+      KEYCLOAK_REALM: ceeds
+      KEYCLOAK_CLIENT: ceeds-frontend
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    env_file:
+      - .env
+    entrypoint: [ "/bin/bash", "/opt/keycloak/bootstrap/org-bootstrap.sh" ]
+    volumes:
+      - ./keycloak/org-bootstrap.sh:/opt/keycloak/bootstrap/org-bootstrap.sh:ro
 
 volumes:
   postgres_data:

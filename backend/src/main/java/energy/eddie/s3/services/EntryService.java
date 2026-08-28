@@ -1,6 +1,7 @@
 package energy.eddie.s3.services;
 
 import energy.eddie.s3.exceptions.ConflictException;
+import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.exceptions.NotFoundException;
 import energy.eddie.s3.generated.model.EntryDto;
 import energy.eddie.s3.generated.model.EntryValueDto;
@@ -10,10 +11,12 @@ import energy.eddie.s3.models.referencedata.EntryValue;
 import energy.eddie.s3.models.referencedata.EnumOption;
 import energy.eddie.s3.models.referencedata.Field;
 import energy.eddie.s3.models.referencedata.Nation;
+import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
 import energy.eddie.s3.repositories.EntryRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
+import energy.eddie.s3.security.CurrentUser;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,14 +36,17 @@ public class EntryService {
     private final ReferenceDataObjectRepository referenceDataObjectRepository;
     private final ReferenceDataObjectVersionRepository versionRepository;
     private final EntryRepository entryRepository;
+    private final CurrentUser currentUser;
 
     public EntryService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
             ReferenceDataObjectVersionRepository versionRepository,
-            EntryRepository entryRepository) {
+            EntryRepository entryRepository,
+            CurrentUser currentUser) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
         this.entryRepository = entryRepository;
+        this.currentUser = currentUser;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +61,9 @@ public class EntryService {
     @Transactional
     public EntryDto createEntry(UUID id, UUID versionId, UpsertEntryRequest request) {
         var version = findVersion(id, versionId);
-        var entry = new Entry(version.getReferenceDataObject(), toNation(request.getNation()));
+        var nation = toNation(request.getNation());
+        requireMaintainer(nation);
+        var entry = new Entry(version.getReferenceDataObject(), nation);
         applyValues(entry, version, request);
         var saved = entryRepository.save(entry);
         return toDto(saved, version, versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id));
@@ -65,7 +73,10 @@ public class EntryService {
     public EntryDto updateEntry(UUID id, UUID versionId, UUID entryId, UpsertEntryRequest request) {
         var version = findVersion(id, versionId);
         var entry = findEntry(id, entryId);
-        entry.setNation(toNation(request.getNation()));
+        var nation = toNation(request.getNation());
+        requireMaintainer(entry.getNation());
+        requireMaintainer(nation);
+        entry.setNation(nation);
         applyValues(entry, version, request);
         entry.touch();
         var saved = entryRepository.save(entry);
@@ -74,7 +85,15 @@ public class EntryService {
 
     @Transactional
     public void deleteEntry(UUID id, UUID entryId) {
-        entryRepository.delete(findEntry(id, entryId));
+        var entry = findEntry(id, entryId);
+        requireMaintainer(entry.getNation());
+        entryRepository.delete(entry);
+    }
+
+    private void requireMaintainer(@Nullable Nation nation) {
+        if (!currentUser.mayMaintainEntriesFor(nation)) {
+            throw new ForbiddenException("You are not an NDSF for nation " + nation);
+        }
     }
 
     /**
@@ -217,6 +236,9 @@ public class EntryService {
                 .orElseThrow(() -> new NotFoundException("Version " + versionId + " not found"));
         if (!version.getReferenceDataObject().getId().equals(id)) {
             throw new NotFoundException("Version " + versionId + " does not belong to reference data object " + id);
+        }
+        if (version.getPublishState() != PublishState.PUBLISHED && !currentUser.maySeeDrafts()) {
+            throw new NotFoundException("Version " + versionId + " not found");
         }
         return version;
     }

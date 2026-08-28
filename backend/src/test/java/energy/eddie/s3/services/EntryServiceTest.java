@@ -3,9 +3,11 @@ package energy.eddie.s3.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import energy.eddie.s3.exceptions.ConflictException;
+import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.exceptions.NotFoundException;
 import energy.eddie.s3.generated.model.EntryValueDto;
 import energy.eddie.s3.generated.model.Nation;
@@ -19,11 +21,13 @@ import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
 import energy.eddie.s3.repositories.EntryRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
+import energy.eddie.s3.security.CurrentUser;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,9 +44,17 @@ class EntryServiceTest {
     private ReferenceDataObjectVersionRepository versionRepository;
     @Mock
     private EntryRepository entryRepository;
+    @Mock
+    private CurrentUser currentUser;
 
     @InjectMocks
     private EntryService service;
+
+    @BeforeEach
+    void grantOperationalEntity() {
+        lenient().when(currentUser.maySeeDrafts()).thenReturn(true);
+        lenient().when(currentUser.mayMaintainEntriesFor(any())).thenReturn(true);
+    }
 
     private static final UUID OBJECT_ID = UUID.randomUUID();
     private static final UUID VERSION_ID = UUID.randomUUID();
@@ -84,7 +96,7 @@ class EntryServiceTest {
     }
 
     private static UpsertEntryRequest request(List<EntryValueDto> values) {
-        return new UpsertEntryRequest(Nation.AUT, values);
+        return new UpsertEntryRequest(values).nation(Nation.AUT);
     }
 
     private static Field enumField(String name, String... options) {
@@ -115,6 +127,56 @@ class EntryServiceTest {
             }
             return saved;
         });
+    }
+
+    @Test
+    void createEntry_asNdsfOfAnotherNation_throwsForbidden() {
+        when(currentUser.mayMaintainEntriesFor(energy.eddie.s3.models.referencedata.Nation.GER))
+                .thenReturn(false);
+        var rdo = rdo();
+        mockVersion(publishedVersion(rdo));
+
+        assertThatThrownBy(() -> service.createEntry(
+                        OBJECT_ID, VERSION_ID, new UpsertEntryRequest(List.of()).nation(Nation.GER)))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void createEntry_asNdsfOfThatNation_isAllowed() {
+        when(currentUser.mayMaintainEntriesFor(energy.eddie.s3.models.referencedata.Nation.AUT))
+                .thenReturn(true);
+        var rdo = rdo();
+        mockVersion(publishedVersion(rdo));
+        mockSave();
+
+        assertThat(service.createEntry(OBJECT_ID, VERSION_ID, request(List.of())).getNation())
+                .isEqualTo(Nation.AUT);
+    }
+
+    @Test
+    void listEntries_ofADraftVersion_isNotFoundForRolesThatDoNotSeeDrafts() {
+        when(currentUser.maySeeDrafts()).thenReturn(false);
+        mockVersion(version(rdo()));
+
+        assertThatThrownBy(() -> service.listEntries(OBJECT_ID, VERSION_ID)).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void listEntries_ofADraftVersion_isAllowedForRolesThatSeeDrafts() {
+        var rdo = rdo();
+        var draft = version(rdo);
+        mockVersion(draft);
+        mockAllVersionsDesc(draft);
+        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID))
+                .thenReturn(List.of());
+
+        assertThat(service.listEntries(OBJECT_ID, VERSION_ID)).isEmpty();
+    }
+
+    private static ReferenceDataObjectVersion publishedVersion(ReferenceDataObject rdo, Field... fields) {
+        var version = version(rdo, fields);
+        version.setPublishState(PublishState.PUBLISHED);
+        return version;
     }
 
     @Test

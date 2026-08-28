@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { createField } from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
 import useToast from '@/composables/useToast'
 import { nations } from '@/constants/nations'
+import { ndsfNations, userRole } from '@/stores/userInfo'
 
 const { id, versionId } = defineProps<{
   id: components['parameters']['ReferenceDataObjectId']
@@ -26,6 +27,14 @@ const optionDraft = ref('')
 const errorMessage = ref('')
 const submitting = ref(false)
 
+const isOperationalEntity = computed(() => userRole.value === 'operationalEntity')
+
+const nationOptions = computed(() =>
+  isOperationalEntity.value
+    ? nations
+    : nations.filter((option) => ndsfNations.value.includes(option.value)),
+)
+
 const addOption = () => {
   const option = optionDraft.value.trim()
   if (!option) return
@@ -46,6 +55,10 @@ const submit = async () => {
   errorMessage.value = ''
   if (dataType.value === 'ENUM' && options.value.length === 0) {
     errorMessage.value = 'Enum fields require at least one option'
+    return
+  }
+  if (!nation.value && !isOperationalEntity.value) {
+    errorMessage.value = 'Select a nation'
     return
   }
 
@@ -123,10 +136,13 @@ const submit = async () => {
     </div>
     <label>
       Nation
+      <span v-if="!isOperationalEntity" class="mandatory" title="Mandatory">*</span>
       <select v-model="nation">
-        <option value="">All nations</option>
+        <option value="" :disabled="!isOperationalEntity">
+          {{ isOperationalEntity ? 'All nations' : '—' }}
+        </option>
         <option
-          v-for="nationOption in nations"
+          v-for="nationOption in nationOptions"
           :key="nationOption.value"
           :value="nationOption.value"
         >
@@ -200,5 +216,9 @@ label {
   color: var(--error);
   margin: 0;
   flex-basis: 100%;
+}
+
+.mandatory {
+  color: var(--error);
 }
 </style>

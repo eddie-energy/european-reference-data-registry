@@ -3,8 +3,8 @@
   "enabled": true,
   "displayName": "CEEDS",
   "sslRequired": "none",
-  "registrationAllowed": false,
-  "loginWithEmailAllowed": true,
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": false,
   "duplicateEmailsAllowed": false,
   "clients": [
     {
@@ -36,10 +36,6 @@
     {
       "username": "ceeds",
       "enabled": true,
-      "emailVerified": true,
-      "email": "ceeds@insiemse.eddie",
-      "firstName": "CEEDS",
-      "lastName": "User",
       "credentials": [
         {
           "type": "password",
@@ -48,5 +44,8 @@
         }
       ]
     }
-  ]
+  ],
+  "registrationEmailAsUsername": false,
+  "verifyEmail": false,
+  "resetPasswordAllowed": false
 }

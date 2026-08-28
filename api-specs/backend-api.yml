@@ -15,6 +15,8 @@ tags:
     description: Manage reference data objects, their versions and fields
   - name: Entries
     description: Manage the data entries of a reference data object
+  - name: Me
+    description: Information about the authenticated caller
 
 security:
   - bearerAuth: [ ]
@@ -23,6 +25,7 @@ paths:
   /reference-data-objects:
     get:
       tags: [ ReferenceData ]
+      security: [ ]
       operationId: getAllReferenceDataObjects
       summary: Get all reference data objects including their versions and fields
       responses:
@@ -55,10 +58,13 @@ paths:
                 $ref: '#/components/schemas/ReferenceDataObjectDetail'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}:
     get:
       tags: [ ReferenceData ]
+      security: [ ]
       operationId: getReferenceDataObject
       summary: Get a reference data object including its versions and fields
       parameters:
@@ -89,6 +95,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions:
     post:
@@ -108,6 +116,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}:
     delete:
@@ -126,6 +136,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}/publish:
     post:
@@ -146,6 +158,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}/fields:
     post:
@@ -174,6 +188,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     put:
       tags: [ ReferenceData ]
       operationId: replaceVersionFields
@@ -200,6 +216,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}/fields/{fieldId}:
     delete:
@@ -224,6 +242,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}/fields/order:
     put:
@@ -252,10 +272,13 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}/entries:
     get:
       tags: [ Entries ]
+      security: [ ]
       operationId: listEntries
       summary: List the entries of a reference data object projected onto a version
       description: >-
@@ -304,6 +327,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/versions/{versionId}/entries/{entryId}:
     put:
@@ -336,6 +361,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /reference-data-objects/{id}/entries/{entryId}:
     delete:
@@ -350,6 +377,23 @@ paths:
           description: Deleted
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /me:
+    get:
+      tags: [ Me ]
+      operationId: getCurrentUser
+      summary: Get the effective roles of the authenticated caller
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -391,6 +435,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The caller's roles do not permit this operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     NotFound:
       description: Resource not found
       content:
@@ -405,6 +455,34 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+    Role:
+      type: string
+      description: |
+        Effective CEEDS role. VIEWER is implicit for anonymous callers, PARTICIPANT for every
+        authenticated one; NDSF and OPERATIONAL_ENTITY come from the caller's Keycloak organizations.
+      enum: [ VIEWER, PARTICIPANT, NDSF, OPERATIONAL_ENTITY ]
+
+    CurrentUserDto:
+      type: object
+      required: [ username, roles, ndsfNations, organizations ]
+      properties:
+        username:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        ndsfNations:
+          type: array
+          description: Nations the caller may maintain entries for as NDSF
+          items:
+            $ref: '#/components/schemas/Nation'
+        organizations:
+          type: array
+          description: Aliases of the Keycloak organizations the caller belongs to
+          items:
+            type: string
+
     DataType:
       type: string
       enum: [ NUMBER, TEXT, DATE, ENUM ]
@@ -590,7 +668,7 @@ components:
 
     UpsertEntryRequest:
       type: object
-      required: [ nation, values ]
+      required: [ values ]
       properties:
         nation:
           $ref: '#/components/schemas/Nation'

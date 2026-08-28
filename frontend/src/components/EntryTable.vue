@@ -66,7 +66,7 @@ const openEdit = (entry: EntryDto) => {
 }
 
 const save = async (payload: {
-  nation: components['schemas']['Nation']
+  nation?: components['schemas']['Nation']
   values: components['schemas']['EntryValueDto'][]
 }) => {
   const entry = editing.value
@@ -144,7 +144,7 @@ const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
       const lastComplete = ctx.row.original.lastCompleteVersionCode
       const showVersionCode =
         lastComplete != null &&
-        (userRole.value === 'ceedsEntity' || isPublishedVersionCode(lastComplete))
+        (userRole.value === 'operationalEntity' || isPublishedVersionCode(lastComplete))
       return h(
         'span',
         {

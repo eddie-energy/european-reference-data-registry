@@ -1,6 +1,7 @@
 package energy.eddie.s3.services;
 
 import energy.eddie.s3.exceptions.ConflictException;
+import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.exceptions.NotFoundException;
 import energy.eddie.s3.generated.model.CreateFieldRequest;
 import energy.eddie.s3.generated.model.CreateReferenceDataObjectRequest;
@@ -21,6 +22,7 @@ import energy.eddie.s3.repositories.EntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
+import energy.eddie.s3.security.CurrentUser;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -38,6 +40,7 @@ public class ReferenceDataObjectService {
     private final EntryRepository entryRepository;
     private final EntryValueRepository entryValueRepository;
     private final ReferenceDataObjectMapper mapper;
+    private final CurrentUser currentUser;
 
     public ReferenceDataObjectService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
@@ -45,13 +48,15 @@ public class ReferenceDataObjectService {
             FieldRepository fieldRepository,
             EntryRepository entryRepository,
             EntryValueRepository entryValueRepository,
-            ReferenceDataObjectMapper mapper) {
+            ReferenceDataObjectMapper mapper,
+            CurrentUser currentUser) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
         this.fieldRepository = fieldRepository;
         this.entryRepository = entryRepository;
         this.entryValueRepository = entryValueRepository;
         this.mapper = mapper;
+        this.currentUser = currentUser;
     }
 
     @Transactional
@@ -64,14 +69,32 @@ public class ReferenceDataObjectService {
 
     @Transactional(readOnly = true)
     public List<ReferenceDataObjectDetail> getAll() {
+        var seesDrafts = currentUser.maySeeDrafts();
         return referenceDataObjectRepository.findAll().stream()
                 .map(mapper::toDetail)
+                .map(detail -> withVisibleVersions(detail, seesDrafts))
+                .filter(detail -> !detail.getVersions().isEmpty())
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ReferenceDataObjectDetail get(UUID id) {
-        return mapper.toDetail(findReferenceDataObject(id));
+        var detail = withVisibleVersions(mapper.toDetail(findReferenceDataObject(id)), currentUser.maySeeDrafts());
+        if (detail.getVersions().isEmpty()) {
+            throw new NotFoundException("Reference data object " + id + " not found");
+        }
+        return detail;
+    }
+
+    private static ReferenceDataObjectDetail withVisibleVersions(
+            ReferenceDataObjectDetail detail, boolean seesDrafts) {
+        if (seesDrafts) {
+            return detail;
+        }
+        detail.setVersions(detail.getVersions().stream()
+                .filter(version -> version.getPublishState() == energy.eddie.s3.generated.model.PublishState.PUBLISHED)
+                .toList());
+        return detail;
     }
 
     @Transactional
@@ -108,6 +131,7 @@ public class ReferenceDataObjectService {
     @Transactional
     public FieldDto createField(UUID id, UUID versionId, CreateFieldRequest request) {
         var version = findVersion(id, versionId);
+        requireFieldMaintainer(toNation(request.getNation()));
         if (version.getPublishState() == PublishState.PUBLISHED) {
             throw new ConflictException("Cannot add fields to a published version");
         }
@@ -159,6 +183,18 @@ public class ReferenceDataObjectService {
                 request.getMandatory(),
                 request.getNation(),
                 request.getOptions());
+    }
+
+    private void requireFieldMaintainer(@Nullable Nation nation) {
+        if (currentUser.isOperationalEntity()) {
+            return;
+        }
+        if (nation == null) {
+            throw new ForbiddenException("Only an operational entity can create fields shared by all nations");
+        }
+        if (!currentUser.mayMaintainFieldsFor(nation)) {
+            throw new ForbiddenException("You are not an NDSF for nation " + nation);
+        }
     }
 
     private Field newField(

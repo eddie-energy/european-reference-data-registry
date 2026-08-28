@@ -1,10 +1,19 @@
 <script lang="ts" setup>
-import { userRole } from '@/stores/userInfo'
-import { logout } from '@/keycloak'
+import { computed } from 'vue'
+import { userRole, username } from '@/stores/userInfo'
+import { isAuthenticated, login, logout, register } from '@/keycloak'
 
 const swaggerUrl = `${import.meta.env.VITE_BASE_URL}/swagger-ui.html`
 
-const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntity', 'dataspaceFacilitator']
+const ROLE_LABELS = {
+  viewer: 'Viewer',
+  participant: 'Participant',
+  ndsf: 'NDSF',
+  operationalEntity: 'Operational Entity',
+}
+
+const authenticated = computed(() => isAuthenticated())
+const roleLabel = computed(() => ROLE_LABELS[userRole.value])
 </script>
 
 <template>
@@ -19,15 +28,17 @@ const userRoleOptions = ['viewer', 'ceedsParticipant', 'ceedsEntity', 'dataspace
     </nav>
 
     <div class="account">
-      <label class="account-label" for="userSelect">Logged in as:</label>
-      <div class="select-wrapper">
-        <select v-model="userRole" id="userSelect">
-          <option v-for="role in userRoleOptions" :key="role">
-            {{ role }}
-          </option>
-        </select>
-      </div>
-      <button type="button" class="sign-out" @click="logout">Sign Out</button>
+      <template v-if="authenticated">
+        <span class="account-label">Signed in as</span>
+        <span class="account-name">{{ username }}</span>
+        <span class="account-role">{{ roleLabel }}</span>
+        <button type="button" class="sign-out" @click="logout">Sign Out</button>
+      </template>
+      <template v-else>
+        <span class="account-label">Browsing as {{ roleLabel }}</span>
+        <button type="button" class="sign-in" @click="login">Sign In</button>
+        <button type="button" class="sign-out" @click="register">Create Account</button>
+      </template>
     </div>
   </aside>
 </template>
@@ -95,38 +106,39 @@ nav a.router-link-active {
   color: var(--dark);
 }
 
-.select-wrapper {
-  position: relative;
-}
-
-.select-wrapper::after {
-  content: '›';
-  position: absolute;
-  top: 50%;
-  right: var(--spacing-md);
-  transform: translateY(-50%);
-  color: var(--dark);
-  font-size: 1.1rem;
-  pointer-events: none;
-}
-
-#userSelect {
-  width: 100%;
-  box-sizing: border-box;
-  appearance: none;
-  padding: var(--spacing-sm) var(--spacing-xlg) var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--input-border-color);
-  border-radius: 1.25rem;
-  background-color: var(--light);
-  color: var(--dark);
+.account-name {
   font-size: 0.95rem;
-  text-transform: capitalize;
-  cursor: pointer;
+  font-weight: 600;
+  color: var(--dark);
 }
 
-#userSelect:focus-visible {
+.account-role {
+  font-size: 0.85rem;
+  color: var(--dark);
+  opacity: 0.7;
+}
+
+.sign-in {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--pill-radius);
+  background-color: var(--teal);
+  color: var(--light);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--theme-transition);
+}
+
+.sign-in:hover {
+  background-color: var(--teal-tint-text);
+}
+
+.sign-in:focus-visible {
   outline: none;
-  border-color: var(--teal);
   box-shadow: 0 0 0 3px var(--teal-tint-bg);
 }
 
