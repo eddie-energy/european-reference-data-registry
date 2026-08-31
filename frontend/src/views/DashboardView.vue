@@ -1,11 +1,19 @@
 <script lang="ts" setup>
 import ReferenceObjectCard from '@/components/ReferenceObjectCard.vue'
 import 'vue3-carousel/carousel.css'
-import { referenceDataObjects } from '@/stores/referenceDataObject'
+import { referenceDataObjects, updateReferenceDataObjects } from '@/stores/referenceDataObject'
 import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 import ButtonLink from '@/components/ButtonLink.vue'
 import { userRole } from '@/stores/userInfo'
-import { computed } from 'vue'
+import useToast from '@/composables/useToast'
+import { computed, onMounted } from 'vue'
+
+onMounted(async () => {
+  const { error } = await updateReferenceDataObjects()
+  if (error) {
+    useToast().danger(error.message ?? 'Failed to load reference data objects')
+  }
+})
 
 const visibleReferenceDataObjects = computed(() =>
   userRole.value === 'operationalEntity'
@@ -13,6 +21,15 @@ const visibleReferenceDataObjects = computed(() =>
     : referenceDataObjects.value?.filter((object) =>
         object.versions.some((version) => version.publishState === 'PUBLISHED'),
       ),
+)
+
+const carouselKey = computed(() =>
+  (visibleReferenceDataObjects.value ?? [])
+    .map(
+      (object) =>
+        `${object.id}:${object.versions.map((version) => `${version.versionCode}${version.publishState}`).join(',')}`,
+    )
+    .join('|'),
 )
 
 const carouselConfig = computed(() => ({
@@ -44,7 +61,7 @@ const carouselConfig = computed(() => ({
         </ButtonLink>
       </header>
       <div class="carousel-wrapper">
-        <Carousel v-bind="carouselConfig">
+        <Carousel :key="carouselKey" v-bind="carouselConfig">
           <Slide v-for="object in visibleReferenceDataObjects" :key="object.id">
             <ReferenceObjectCard v-bind="object" />
           </Slide>

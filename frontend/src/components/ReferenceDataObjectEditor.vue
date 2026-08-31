@@ -36,6 +36,25 @@ const draftVersion = computed(() => {
   return lastVersion?.publishState === 'DRAFT' ? lastVersion : undefined
 })
 
+const previousVersion = computed(() => {
+  const versions = referenceDataObject.value?.versions ?? []
+  const withoutDraft = draftVersion.value
+    ? versions.filter((version) => version.id !== draftVersion.value!.id)
+    : versions
+  return withoutDraft[withoutDraft.length - 1]
+})
+
+const draftHasChanges = computed(() => {
+  if (!draftVersion.value) return false
+  if (!previousVersion.value) return true
+  const draftFieldIds = draftVersion.value.fields.map((field) => field.id)
+  const previousFieldIds = previousVersion.value.fields.map((field) => field.id)
+  return (
+    draftFieldIds.length !== previousFieldIds.length ||
+    draftFieldIds.some((fieldId, index) => fieldId !== previousFieldIds[index])
+  )
+})
+
 const hasFields = computed(() =>
   (referenceDataObject.value?.versions ?? []).some((version) => version.fields.length > 0),
 )
@@ -74,7 +93,7 @@ const startNewVersion = async () => {
 }
 
 const publish = async () => {
-  if (!draftVersion.value) return
+  if (!draftVersion.value || !draftHasChanges.value) return
   if (
     !(await confirm(
       'Publish version',
@@ -292,13 +311,18 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
 
       <FieldForm :id :version-id="draftVersion.id" @created="load" />
 
+      <p v-if="isOperationalEntity && !draftHasChanges" class="empty">
+        No changes from version {{ previousVersion?.versionCode }} — add, remove or reorder a field
+        to publish.
+      </p>
+
       <div class="draft-actions">
         <ButtonLink
           v-if="isOperationalEntity"
           component="button"
           buttonStyle="secondary"
           size="compact"
-          :disabled="submitting"
+          :disabled="submitting || !draftHasChanges"
           @click="publish"
         >
           Publish version {{ draftVersion.versionCode }}
