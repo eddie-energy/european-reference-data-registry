@@ -12,10 +12,14 @@ export const updateReferenceDataObjects = async () => {
 
 export const referenceDataObject = ref<components['schemas']['ReferenceDataObjectDetail']>()
 
+let requestSeq = 0
+
 export const updateReferenceDataObject = async (
   id: components['parameters']['ReferenceDataObjectId'],
 ) => {
+  const seq = ++requestSeq
   const { data, error } = await getReferenceDataObject(id)
+  if (seq !== requestSeq) return { error }
   referenceDataObject.value = data
   return { error }
 }

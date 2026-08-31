@@ -34,12 +34,16 @@ const load = async () => {
 onMounted(load)
 watch(() => id, load)
 
+const currentObject = computed(() =>
+  referenceDataObject.value?.id === id ? referenceDataObject.value : undefined,
+)
+
 const mayEditVersions = computed(
   () => userRole.value === 'operationalEntity' || userRole.value === 'ndsf',
 )
 
 const visibleVersions = computed(() => {
-  const versions = referenceDataObject.value?.versions ?? []
+  const versions = currentObject.value?.versions ?? []
   return mayEditVersions.value
     ? versions
     : versions.filter((version) => version.publishState === 'PUBLISHED')
@@ -110,13 +114,13 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
 
 <template>
   <main class="reference-data-object">
-    <template v-if="referenceDataObject">
+    <template v-if="currentObject">
       <p class="breadcrumb">
         <RouterLink to="/">S3 Reference Data Registry</RouterLink> →
-        {{ referenceDataObject.name }}
+        {{ currentObject.name }}
       </p>
-      <h1>{{ referenceDataObject.name }}</h1>
-      <p>{{ referenceDataObject.description }}</p>
+      <h1>{{ currentObject.name }}</h1>
+      <p>{{ currentObject.description }}</p>
 
       <nav class="tabs">
         <button
@@ -132,10 +136,7 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
       </nav>
 
       <section v-if="activeTab === 'browse'">
-        <div
-          v-if="mayEditVersions && visibleVersions.length > 1"
-          class="version-switch"
-        >
+        <div v-if="mayEditVersions && visibleVersions.length > 1" class="version-switch">
           <label for="versionSelect">Version</label>
           <select id="versionSelect" v-model.number="versionSwitchModel">
             <option
