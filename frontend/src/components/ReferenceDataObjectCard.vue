@@ -69,7 +69,7 @@ const iconAccentClass = computed(() => {
 </script>
 
 <template>
-  <div class="reference-object-card">
+  <div class="reference-data-object-card">
     <div class="icon-chip" :class="iconAccentClass" aria-hidden="true">
       <CardIcon class="icon" />
     </div>
@@ -123,7 +123,7 @@ const iconAccentClass = computed(() => {
 </template>
 
 <style scoped>
-.reference-object-card {
+.reference-data-object-card {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -141,7 +141,7 @@ const iconAccentClass = computed(() => {
     transform 0.2s ease;
 }
 
-.reference-object-card:hover {
+.reference-data-object-card:hover {
   box-shadow: var(--card-shadow-hover);
   transform: translateY(-2px);
 }

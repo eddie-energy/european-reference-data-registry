@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,10 +25,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "reference_data_entry")
 @SuppressWarnings("NullAway.Init")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class Entry {
+public class ReferenceDataEntry {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -50,28 +52,32 @@ public class Entry {
     @Nullable
     protected Nation nation;
 
-    @OneToMany(mappedBy = "entry", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    protected List<EntryValue> values = new ArrayList<>();
+    @OneToMany(
+            mappedBy = "referenceDataEntry",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    protected List<ReferenceDataEntryValue> values = new ArrayList<>();
 
-    public Entry(ReferenceDataObject referenceDataObject, @Nullable Nation nation) {
+    public ReferenceDataEntry(ReferenceDataObject referenceDataObject, @Nullable Nation nation) {
         this.referenceDataObject = referenceDataObject;
         this.nation = nation;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
 
-    public Optional<EntryValue> findValue(UUID fieldId) {
+    public Optional<ReferenceDataEntryValue> findValue(UUID fieldId) {
         return values.stream()
                 .filter(value -> value.getField().getId().equals(fieldId))
                 .findFirst();
     }
 
-    public EntryValue putValue(Field field) {
+    public ReferenceDataEntryValue putValue(Field field) {
         var existing = findValue(field.getId());
         if (existing.isPresent()) {
             return existing.get();
         }
-        var value = new EntryValue(this, field);
+        var value = new ReferenceDataEntryValue(this, field);
         values.add(value);
         return value;
     }

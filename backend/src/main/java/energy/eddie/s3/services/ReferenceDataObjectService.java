@@ -17,8 +17,8 @@ import energy.eddie.s3.models.referencedata.Nation;
 import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
-import energy.eddie.s3.repositories.EntryRepository;
-import energy.eddie.s3.repositories.EntryValueRepository;
+import energy.eddie.s3.repositories.ReferenceDataEntryRepository;
+import energy.eddie.s3.repositories.ReferenceDataEntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
@@ -37,8 +37,8 @@ public class ReferenceDataObjectService {
     private final ReferenceDataObjectRepository referenceDataObjectRepository;
     private final ReferenceDataObjectVersionRepository versionRepository;
     private final FieldRepository fieldRepository;
-    private final EntryRepository entryRepository;
-    private final EntryValueRepository entryValueRepository;
+    private final ReferenceDataEntryRepository referenceDataEntryRepository;
+    private final ReferenceDataEntryValueRepository referenceDataEntryValueRepository;
     private final ReferenceDataObjectMapper mapper;
     private final CurrentUser currentUser;
 
@@ -46,15 +46,15 @@ public class ReferenceDataObjectService {
             ReferenceDataObjectRepository referenceDataObjectRepository,
             ReferenceDataObjectVersionRepository versionRepository,
             FieldRepository fieldRepository,
-            EntryRepository entryRepository,
-            EntryValueRepository entryValueRepository,
+            ReferenceDataEntryRepository referenceDataEntryRepository,
+            ReferenceDataEntryValueRepository referenceDataEntryValueRepository,
             ReferenceDataObjectMapper mapper,
             CurrentUser currentUser) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
         this.fieldRepository = fieldRepository;
-        this.entryRepository = entryRepository;
-        this.entryValueRepository = entryValueRepository;
+        this.referenceDataEntryRepository = referenceDataEntryRepository;
+        this.referenceDataEntryValueRepository = referenceDataEntryValueRepository;
         this.mapper = mapper;
         this.currentUser = currentUser;
     }
@@ -105,8 +105,8 @@ public class ReferenceDataObjectService {
         if (hasFields) {
             throw new ConflictException("Reference data object has fields and cannot be deleted");
         }
-        if (entryRepository.existsByReferenceDataObjectId(id)) {
-            throw new ConflictException("Reference data object has entries and cannot be deleted");
+        if (referenceDataEntryRepository.existsByReferenceDataObjectId(id)) {
+            throw new ConflictException("Reference data object has reference data entries and cannot be deleted");
         }
         referenceDataObjectRepository.delete(rdo);
     }
@@ -287,12 +287,9 @@ public class ReferenceDataObjectService {
         }
     }
 
-    /**
-     * A field may only be deleted once no version links it and no entry holds a value for it,
-     * otherwise stored entry values would be lost (and the foreign key would reject the delete).
-     */
     private boolean isFieldUnused(UUID fieldId) {
-        return versionRepository.countByFieldsId(fieldId) == 0 && !entryValueRepository.existsByFieldId(fieldId);
+        return versionRepository.countByFieldsId(fieldId) == 0
+                && !referenceDataEntryValueRepository.existsByFieldId(fieldId);
     }
 
     private ReferenceDataObject findReferenceDataObject(UUID id) {

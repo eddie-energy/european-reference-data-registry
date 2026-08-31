@@ -19,7 +19,7 @@ Gradle multi-project (`rootProject.name = "ceeds-backend"`) with three modules:
 generated from it, never hand-edited to diverge:
 
 - `api` module: `:api:generateServerApi` (OpenAPI Generator, `spring`, `interfaceOnly`) →
-  `EntriesApi`, `ReferenceDataObjectDto`, etc. Runs automatically before `:api:compileJava`.
+  `ReferenceDataEntriesApi`, `ReferenceDataObjectDto`, etc. Runs automatically before `:api:compileJava`.
 - frontend: `pnpm generate-openapi-schemas` → `frontend/src/schema.d.ts`.
 - Swagger UI serves the authored spec itself (copied to static resources via `copyApiSpec`), not a
   definition re-derived from controllers.
@@ -46,10 +46,11 @@ Note: OpenAPI `date-time` is mapped to `java.time.Instant` (see `api/build.gradl
 
 `ReferenceDataObject` → many `ReferenceDataObjectVersion` (`publishState` DRAFT/PUBLISHED) → many
 `Field` (`DataType` TEXT/NUMBER/DATE/ENUM, optional `nation`, ENUM fields own `EnumOption`s). An
-`Entry` belongs to the **ReferenceDataObject, not a version** — it survives into later versions and its
-stored values are projected onto whatever version is being read. Each `EntryValue` is one typed slot
-per field. An entry carries an optional `nation`; a field applies to an entry when the field is shared
-(`nation == null`) or matches the entry's nation.
+`ReferenceDataEntry` belongs to the **ReferenceDataObject, not a version** — it survives into later
+versions and its stored values are projected onto whatever version is being read. Each
+`ReferenceDataEntryValue` is one typed slot per field. A reference data entry carries an optional
+`nation`; a field applies when it is shared (`nation == null`) or matches the reference data entry's
+nation.
 
 ## Database & migrations
 
@@ -99,23 +100,24 @@ place that reads `SecurityContextHolder`; services ask it, nothing else.
 
 | Role | Who | May |
 |---|---|---|
-| `VIEWER` | anonymous | read published objects and their entries |
+| `VIEWER` | anonymous | read published reference data objects and their reference data entries |
 | `PARTICIPANT` | any valid token | (API tokens — not built yet) |
-| `NDSF` | org attribute, per nation | create/update/delete entries and add fields **of its nations**; see drafts |
+| `NDSF` | org attribute, per nation | create/update/delete reference data entries and add fields **of its nations**; see drafts |
 | `OPERATIONAL_ENTITY` | org attribute | manage objects, versions, fields; see drafts. **Only** role that creates versions |
 
 - Enforcement lives in `SecurityConfig`'s `authorizeHttpRequests` matchers, **not** `@PreAuthorize`:
   `@EnableMethodSecurity` JDK-proxies the controllers, and in a `@WebMvcTest` slice (no
   `AopAutoConfiguration`) the proxies stop being registered as handlers, so every write 404s/405s.
 - Rule ordering matters — the SPA deep-link patterns (`/{a}/{b}`) also match `/api/...`, so every
-  `/api/**` rule must be declared before `PUBLIC_PATHS`, and the entry paths before the broader
+  `/api/**` rule must be declared before `PUBLIC_PATHS`, and the reference data entry paths before the broader
   reference-data-object rule.
 - The **nation** check cannot be expressed as a matcher (it depends on the request body or the stored
-  entry), so `EntryService` calls `CurrentUser.mayMaintainEntriesFor` and throws `ForbiddenException`.
+  reference data entry), so `ReferenceDataEntryService` calls
+  `CurrentUser.mayMaintainReferenceDataEntriesFor` and throws `ForbiddenException`.
 - Reads filter drafts server-side, and both services ask `CurrentUser.maySeeDrafts()` (Operational
   Entity **or** NDSF — an NDSF has to reach a draft to add its national fields to it):
   `ReferenceDataObjectService` drops non-`PUBLISHED` versions (and objects left with none) for
-  everyone else, and `EntryService.findVersion` 404s a draft version for them too. Keep the two in
+  everyone else, and `ReferenceDataEntryService.findVersion` 404s a draft version for them too. Keep the two in
   step — if only one filters, the other's endpoint 404s on a version the caller was just shown.
 - The frontend uses `check-sso`, mounts whether or not you are signed in, and reads its role from
   `GET /api/me` (`frontend/src/stores/userInfo.ts`) — there is no self-selected role any more.
@@ -139,8 +141,8 @@ Gradle** (Settings → Build Tools → Gradle → "Build and run using: Gradle")
 ./gradlew :backend:build            # compile + test + bundle frontend
 ./gradlew :backend:test             # unit tests only (excludes *IntegrationTest)
 ./gradlew :backend:integrationTest  # *IntegrationTest classes — needs a running DB
-./gradlew :backend:test --tests 'energy.eddie.s3.services.EntryServiceTest'                       # single class
-./gradlew :backend:test --tests 'energy.eddie.s3.services.EntryServiceTest.createEntry_storesTypedValues'  # single method
+./gradlew :backend:test --tests 'energy.eddie.s3.services.ReferenceDataEntryServiceTest'                                      # single class
+./gradlew :backend:test --tests 'energy.eddie.s3.services.ReferenceDataEntryServiceTest.createReferenceDataEntry_storesTypedValues'  # single method
 ./gradlew :api:generateServerApi    # regenerate Java API types from the spec
 
 docker compose -f backend/env/docker-compose.yaml up -d   # postgres (:5440) + keycloak (:8081)

@@ -25,8 +25,8 @@ import energy.eddie.s3.models.referencedata.Nation;
 import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
-import energy.eddie.s3.repositories.EntryRepository;
-import energy.eddie.s3.repositories.EntryValueRepository;
+import energy.eddie.s3.repositories.ReferenceDataEntryRepository;
+import energy.eddie.s3.repositories.ReferenceDataEntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
@@ -53,9 +53,9 @@ class ReferenceDataObjectServiceTest {
     @Mock
     private FieldRepository fieldRepository;
     @Mock
-    private EntryRepository entryRepository;
+    private ReferenceDataEntryRepository referenceDataEntryRepository;
     @Mock
-    private EntryValueRepository entryValueRepository;
+    private ReferenceDataEntryValueRepository referenceDataEntryValueRepository;
     @Mock
     private ReferenceDataObjectMapper mapper;
     @Mock
@@ -382,19 +382,19 @@ class ReferenceDataObjectServiceTest {
     }
 
     @Test
-    void delete_withEntries_throwsConflict() {
+    void delete_withReferenceDataEntries_throwsConflict() {
         var id = UUID.randomUUID();
         var rdo = rdoWithId(id);
         rdo.getVersions().add(versionWithId(rdo, UUID.randomUUID(), 1, PublishState.DRAFT));
         when(referenceDataObjectRepository.findById(id)).thenReturn(Optional.of(rdo));
-        when(entryRepository.existsByReferenceDataObjectId(id)).thenReturn(true);
+        when(referenceDataEntryRepository.existsByReferenceDataObjectId(id)).thenReturn(true);
 
         assertThatThrownBy(() -> service.delete(id)).isInstanceOf(ConflictException.class);
         verify(referenceDataObjectRepository, never()).delete(any());
     }
 
     @Test
-    void unlinkField_withStoredEntryValues_keepsField() {
+    void unlinkField_withStoredReferenceDataEntryValues_keepsField() {
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var fieldId = UUID.randomUUID();
@@ -404,7 +404,7 @@ class ReferenceDataObjectServiceTest {
         version.getFields().add(field);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
         when(versionRepository.countByFieldsId(fieldId)).thenReturn(0L);
-        when(entryValueRepository.existsByFieldId(fieldId)).thenReturn(true);
+        when(referenceDataEntryValueRepository.existsByFieldId(fieldId)).thenReturn(true);
 
         service.unlinkField(id, versionId, fieldId);
 
@@ -495,7 +495,7 @@ class ReferenceDataObjectServiceTest {
     }
 
     @Test
-    void deleteVersion_fieldHasEntryValues_keepsField() {
+    void deleteVersion_fieldHasReferenceDataEntryValues_keepsField() {
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var fieldId = UUID.randomUUID();
@@ -508,7 +508,7 @@ class ReferenceDataObjectServiceTest {
         rdo.getVersions().add(draft);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(draft));
         when(versionRepository.countByFieldsId(fieldId)).thenReturn(0L);
-        when(entryValueRepository.existsByFieldId(fieldId)).thenReturn(true);
+        when(referenceDataEntryValueRepository.existsByFieldId(fieldId)).thenReturn(true);
 
         service.deleteVersion(id, versionId);
 

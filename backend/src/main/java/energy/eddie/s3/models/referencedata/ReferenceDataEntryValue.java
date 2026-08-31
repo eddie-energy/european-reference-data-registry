@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,10 +20,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "reference_data_entry_value")
 @SuppressWarnings("NullAway.Init")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class EntryValue {
+public class ReferenceDataEntryValue {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -48,8 +50,8 @@ public class EntryValue {
     protected Instant createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "entry_id", referencedColumnName = "id", nullable = false, updatable = false)
-    protected Entry entry;
+    @JoinColumn(name = "reference_data_entry_id", referencedColumnName = "id", nullable = false, updatable = false)
+    protected ReferenceDataEntry referenceDataEntry;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "field_id", referencedColumnName = "id", nullable = false, updatable = false)
@@ -61,8 +63,8 @@ public class EntryValue {
     @Nullable
     protected EnumOption enumOption;
 
-    public EntryValue(Entry entry, Field field) {
-        this.entry = entry;
+    public ReferenceDataEntryValue(ReferenceDataEntry referenceDataEntry, Field field) {
+        this.referenceDataEntry = referenceDataEntry;
         this.field = field;
         this.createdAt = Instant.now();
     }
