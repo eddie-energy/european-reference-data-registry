@@ -19,20 +19,26 @@ const submit = async () => {
   errorMessage.value = ''
   submitting.value = true
 
-  const { data: object, error: objectError } = await createReferenceDataObject({
-    name: name.value,
-    description: description.value,
-  })
+  const { data: referenceDataObject, error: referenceDataObjectError } =
+    await createReferenceDataObject({
+      name: name.value,
+      description: description.value,
+    })
 
-  if (!object) {
-    errorMessage.value = objectError?.message ?? 'Failed to create reference data object'
+  if (!referenceDataObject) {
+    errorMessage.value =
+      referenceDataObjectError?.message ?? 'Failed to create reference data object'
     submitting.value = false
     return
   }
 
   updateReferenceDataObjects()
-  success(`"${object.name}" created`)
-  router.push({ name: 'reference-data-object', params: { id: object.id }, query: { tab: 'edit' } })
+  success(`"${referenceDataObject.name}" created`)
+  router.push({
+    name: 'reference-data-object',
+    params: { id: referenceDataObject.id },
+    query: { tab: 'edit' },
+  })
 }
 </script>
 
@@ -42,7 +48,7 @@ const submit = async () => {
       <RouterLink to="/">S3 Reference Data Registry</RouterLink> → Create Reference Data Object
     </p>
     <div class="section-heading">
-      <span class="badge badge-teal">New object</span>
+      <span class="badge badge-teal">New Reference Data Object</span>
       <h1>Create Reference Data Object</h1>
     </div>
     <form class="create-form" @submit.prevent="submit">

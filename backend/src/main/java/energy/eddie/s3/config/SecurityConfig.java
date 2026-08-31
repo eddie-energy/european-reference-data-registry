@@ -28,10 +28,10 @@ public class SecurityConfig {
         "/api/reference-data-objects", "/api/reference-data-objects/**"
     };
 
-    private static final String[] ENTRY_PATHS = {
-        "/api/reference-data-objects/*/versions/*/entries",
-        "/api/reference-data-objects/*/versions/*/entries/*",
-        "/api/reference-data-objects/*/entries/*"
+    private static final String[] REFERENCE_DATA_ENTRY_PATHS = {
+        "/api/reference-data-objects/*/versions/*/reference-data-entries",
+        "/api/reference-data-objects/*/versions/*/reference-data-entries/*",
+        "/api/reference-data-objects/*/reference-data-entries/*"
     };
 
     private static final String[] NDSF_FIELD_PATHS = {"/api/reference-data-objects/*/versions/*/fields"};
@@ -65,7 +65,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.GET, REFERENCE_DATA_PATHS)
                         .permitAll()
-                        .requestMatchers(ENTRY_PATHS)
+                        .requestMatchers(REFERENCE_DATA_ENTRY_PATHS)
                         .hasAnyRole(CeedsRole.NDSF.name(), CeedsRole.OPERATIONAL_ENTITY.name())
                         .requestMatchers(HttpMethod.POST, NDSF_FIELD_PATHS)
                         .hasAnyRole(CeedsRole.NDSF.name(), CeedsRole.OPERATIONAL_ENTITY.name())

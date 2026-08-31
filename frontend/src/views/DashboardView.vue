@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import ReferenceObjectCard from '@/components/ReferenceObjectCard.vue'
+import ReferenceDataObjectCard from '@/components/ReferenceDataObjectCard.vue'
 import 'vue3-carousel/carousel.css'
 import { referenceDataObjects, updateReferenceDataObjects } from '@/stores/referenceDataObject'
 import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
@@ -18,8 +18,8 @@ onMounted(async () => {
 const visibleReferenceDataObjects = computed(() =>
   userRole.value === 'operationalEntity'
     ? referenceDataObjects.value
-    : referenceDataObjects.value?.filter((object) =>
-        object.versions.some((version) => version.publishState === 'PUBLISHED'),
+    : referenceDataObjects.value?.filter((referenceDataObject) =>
+        referenceDataObject.versions.some((version) => version.publishState === 'PUBLISHED'),
       ),
 )
 
@@ -50,7 +50,7 @@ const carouselConfig = computed(() => ({
       <header class="header">
         <div class="section-heading">
           <span class="badge badge-teal">Reference Data</span>
-          <h2 class="carousel-title">Reference Data Entries</h2>
+          <h2 class="carousel-title">Reference Data Objects</h2>
         </div>
         <ButtonLink
           v-if="userRole === 'operationalEntity'"
@@ -62,8 +62,11 @@ const carouselConfig = computed(() => ({
       </header>
       <div class="carousel-wrapper">
         <Carousel :key="carouselKey" v-bind="carouselConfig">
-          <Slide v-for="object in visibleReferenceDataObjects" :key="object.id">
-            <ReferenceObjectCard v-bind="object" />
+          <Slide
+            v-for="referenceDataObject in visibleReferenceDataObjects"
+            :key="referenceDataObject.id"
+          >
+            <ReferenceDataObjectCard v-bind="referenceDataObject" />
           </Slide>
           <template #addons>
             <Navigation />

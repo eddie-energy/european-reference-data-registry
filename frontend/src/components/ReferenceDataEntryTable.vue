@@ -8,10 +8,15 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import type { ColumnDef, SortingState } from '@tanstack/vue-table'
-import { createEntry, deleteEntry, listEntries, updateEntry } from '@/api'
+import {
+  createReferenceDataEntry,
+  deleteReferenceDataEntry,
+  listReferenceDataEntries,
+  updateReferenceDataEntry,
+} from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
-import EntryForm from './EntryForm.vue'
+import ReferenceDataEntryForm from './ReferenceDataEntryForm.vue'
 import ModalDialog from './ModalDialog.vue'
 import VersionTable from './VersionTable.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
@@ -19,7 +24,7 @@ import useToast from '@/composables/useToast'
 import { referenceDataObject } from '@/stores/referenceDataObject'
 import { userRole } from '@/stores/userInfo'
 
-type EntryDto = components['schemas']['EntryDto']
+type ReferenceDataEntryDto = components['schemas']['ReferenceDataEntryDto']
 type FieldDto = components['schemas']['FieldDto']
 
 const { id, version, editable } = defineProps<{
@@ -31,22 +36,22 @@ const { id, version, editable } = defineProps<{
 const { confirm } = useConfirmDialog()
 const { danger, success } = useToast()
 
-const entries = ref<EntryDto[]>([])
+const referenceDataEntries = ref<ReferenceDataEntryDto[]>([])
 const dialog = ref<InstanceType<typeof ModalDialog>>()
-const editing = ref<EntryDto>()
+const editing = ref<ReferenceDataEntryDto>()
 const formKey = ref(0)
 const submitting = ref(false)
 const loading = ref(true)
 
 const load = async () => {
   loading.value = true
-  const { data, error } = await listEntries(id, version.id)
+  const { data, error } = await listReferenceDataEntries(id, version.id)
   if (!data) {
-    danger(error?.message ?? 'Failed to load entries')
+    danger(error?.message ?? 'Failed to load reference data entries')
     loading.value = false
     return
   }
-  entries.value = data
+  referenceDataEntries.value = data
   loading.value = false
 }
 
@@ -59,47 +64,56 @@ const openCreate = () => {
   dialog.value?.showModal()
 }
 
-const openEdit = (entry: EntryDto) => {
-  editing.value = entry
+const openEdit = (referenceDataEntry: ReferenceDataEntryDto) => {
+  editing.value = referenceDataEntry
   formKey.value++
   dialog.value?.showModal()
 }
 
 const save = async (payload: {
   nation?: components['schemas']['Nation']
-  values: components['schemas']['EntryValueDto'][]
+  values: components['schemas']['ReferenceDataEntryValueDto'][]
 }) => {
-  const entry = editing.value
+  const referenceDataEntry = editing.value
   submitting.value = true
   try {
-    const { error } = entry
-      ? await updateEntry(id, version.id, entry.id, payload)
-      : await createEntry(id, version.id, payload)
+    const { error } = referenceDataEntry
+      ? await updateReferenceDataEntry(id, version.id, referenceDataEntry.id, payload)
+      : await createReferenceDataEntry(id, version.id, payload)
     if (error) {
-      danger(error.message ?? 'Failed to save entry')
+      danger(error.message ?? 'Failed to save reference data entry')
       return
     }
     dialog.value?.close()
-    success(entry ? 'Entry updated' : 'Entry created')
+    success(referenceDataEntry ? 'Reference data entry updated' : 'Reference data entry created')
     await load()
   } finally {
     submitting.value = false
   }
 }
 
-const remove = async (entry: EntryDto) => {
-  if (!(await confirm('Delete entry', 'Delete this entry? This cannot be undone.'))) return
-  const { error } = await deleteEntry(id, entry.id)
+const remove = async (referenceDataEntry: ReferenceDataEntryDto) => {
+  if (
+    !(await confirm(
+      'Delete Reference Data Entry',
+      'Delete this reference data entry? This cannot be undone.',
+    ))
+  )
+    return
+  const { error } = await deleteReferenceDataEntry(id, referenceDataEntry.id)
   if (error) {
-    danger(error.message ?? 'Failed to delete entry')
+    danger(error.message ?? 'Failed to delete reference data entry')
     return
   }
-  success('Entry deleted')
+  success('Reference data entry deleted')
   await load()
 }
 
-const rawValue = (entry: EntryDto, field: FieldDto): string | number | undefined => {
-  const value = entry.values.find((candidate) => candidate.fieldId === field.id)
+const rawValue = (
+  referenceDataEntry: ReferenceDataEntryDto,
+  field: FieldDto,
+): string | number | undefined => {
+  const value = referenceDataEntry.values.find((candidate) => candidate.fieldId === field.id)
   if (!value) return undefined
   switch (field.dataType) {
     case 'NUMBER':
@@ -113,23 +127,24 @@ const rawValue = (entry: EntryDto, field: FieldDto): string | number | undefined
   }
 }
 
-const display = (entry: EntryDto, field: FieldDto) => rawValue(entry, field)?.toString() ?? '—'
+const display = (referenceDataEntry: ReferenceDataEntryDto, field: FieldDto) =>
+  rawValue(referenceDataEntry, field)?.toString() ?? '—'
 
 const isPublishedVersionCode = (versionCode: number) =>
   referenceDataObject.value?.versions.some(
     (v) => v.versionCode === versionCode && v.publishState === 'PUBLISHED',
   ) ?? false
 
-const columnHelper = createColumnHelper<EntryDto>()
+const columnHelper = createColumnHelper<ReferenceDataEntryDto>()
 
-const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
-  columnHelper.accessor((entry) => entry.nation, {
+const columns = computed<ColumnDef<ReferenceDataEntryDto, any>[]>(() => [
+  columnHelper.accessor((referenceDataEntry) => referenceDataEntry.nation, {
     id: 'nation',
     header: 'Country',
     cell: (ctx) => ctx.row.original.nation ?? '—',
   }),
   ...version.fields.map((field) =>
-    columnHelper.accessor((entry) => rawValue(entry, field), {
+    columnHelper.accessor((referenceDataEntry) => rawValue(referenceDataEntry, field), {
       id: field.id,
       header: field.name,
       cell: (ctx) => display(ctx.row.original, field),
@@ -150,8 +165,8 @@ const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
         {
           class: 'chip chip-incomplete',
           title: showVersionCode
-            ? `This entry was last complete as of version ${lastComplete}; a mandatory field added since then has no value.`
-            : 'This entry has never had values for all of its mandatory fields.',
+            ? `This reference data entry was last complete as of version ${lastComplete}; a mandatory field added since then has no value.`
+            : 'This reference data entry has never had values for all of its mandatory fields.',
         },
         showVersionCode ? `v${lastComplete}` : 'Incomplete',
       )
@@ -164,7 +179,7 @@ const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
           header: '',
           enableSorting: false,
           cell: (ctx) => {
-            const entry = ctx.row.original
+            const referenceDataEntry = ctx.row.original
             return [
               h(
                 ButtonLink,
@@ -172,7 +187,7 @@ const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
                   component: 'button',
                   buttonStyle: 'tertiary',
                   size: 'compact',
-                  onClick: () => openEdit(entry),
+                  onClick: () => openEdit(referenceDataEntry),
                 },
                 () => 'Edit',
               ),
@@ -182,7 +197,7 @@ const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
                   component: 'button',
                   buttonStyle: 'error-secondary',
                   size: 'compact',
-                  onClick: () => remove(entry),
+                  onClick: () => remove(referenceDataEntry),
                 },
                 () => 'Delete',
               ),
@@ -196,7 +211,7 @@ const columns = computed<ColumnDef<EntryDto, any>[]>(() => [
 const sorting = ref<SortingState>([])
 
 const table = useVueTable({
-  data: entries,
+  data: referenceDataEntries,
   get columns() {
     return columns.value
   },
@@ -215,9 +230,9 @@ const table = useVueTable({
 </script>
 
 <template>
-  <section class="entries">
-    <header class="entries-header">
-      <h3>Entries</h3>
+  <section class="reference-data-entries">
+    <header class="reference-data-entries-header">
+      <h3>Reference Data Entries</h3>
       <ButtonLink
         v-if="editable"
         component="button"
@@ -227,12 +242,12 @@ const table = useVueTable({
         :title="!version.fields.length ? 'Add fields to this version first' : undefined"
         @click="openCreate"
       >
-        New Entry
+        New Reference Data Entry
       </ButtonLink>
     </header>
 
     <p v-if="loading" class="empty">Loading…</p>
-    <p v-else-if="!entries.length" class="empty">No entries yet.</p>
+    <p v-else-if="!referenceDataEntries.length" class="empty">No reference data entries yet.</p>
     <VersionTable
       v-else
       :version-code="version.versionCode"
@@ -271,11 +286,14 @@ const table = useVueTable({
       </tr>
     </VersionTable>
 
-    <ModalDialog ref="dialog" :title="editing ? 'Edit entry' : 'New entry'">
-      <EntryForm
+    <ModalDialog
+      ref="dialog"
+      :title="editing ? 'Edit Reference Data Entry' : 'New Reference Data Entry'"
+    >
+      <ReferenceDataEntryForm
         :key="formKey"
         :fields="version.fields"
-        :entry="editing"
+        :reference-data-entry="editing"
         :submitting
         @submit="save"
         @cancel="dialog?.close()"
@@ -285,18 +303,18 @@ const table = useVueTable({
 </template>
 
 <style scoped>
-.entries {
+.reference-data-entries {
   margin-block: var(--spacing-lg);
 }
 
-.entries-header {
+.reference-data-entries-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-md);
 }
 
-.entries-header h3 {
+.reference-data-entries-header h3 {
   margin: 0;
 }
 

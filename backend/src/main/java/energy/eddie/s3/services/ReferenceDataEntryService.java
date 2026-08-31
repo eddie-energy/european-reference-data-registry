@@ -3,17 +3,17 @@ package energy.eddie.s3.services;
 import energy.eddie.s3.exceptions.ConflictException;
 import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.exceptions.NotFoundException;
-import energy.eddie.s3.generated.model.EntryDto;
-import energy.eddie.s3.generated.model.EntryValueDto;
-import energy.eddie.s3.generated.model.UpsertEntryRequest;
-import energy.eddie.s3.models.referencedata.Entry;
-import energy.eddie.s3.models.referencedata.EntryValue;
+import energy.eddie.s3.generated.model.ReferenceDataEntryDto;
+import energy.eddie.s3.generated.model.ReferenceDataEntryValueDto;
+import energy.eddie.s3.generated.model.UpsertReferenceDataEntryRequest;
 import energy.eddie.s3.models.referencedata.EnumOption;
 import energy.eddie.s3.models.referencedata.Field;
 import energy.eddie.s3.models.referencedata.Nation;
 import energy.eddie.s3.models.referencedata.PublishState;
+import energy.eddie.s3.models.referencedata.ReferenceDataEntry;
+import energy.eddie.s3.models.referencedata.ReferenceDataEntryValue;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
-import energy.eddie.s3.repositories.EntryRepository;
+import energy.eddie.s3.repositories.ReferenceDataEntryRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
 import energy.eddie.s3.security.CurrentUser;
@@ -25,82 +25,78 @@ import javax.annotation.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Entries belong to a reference data object, not to a single version: an entry created under
- * version 1 stays available in every later version. Reads project the stored values onto the
- * field set of the requested version.
- */
 @Service
-public class EntryService {
+public class ReferenceDataEntryService {
 
     private final ReferenceDataObjectRepository referenceDataObjectRepository;
     private final ReferenceDataObjectVersionRepository versionRepository;
-    private final EntryRepository entryRepository;
+    private final ReferenceDataEntryRepository referenceDataEntryRepository;
     private final CurrentUser currentUser;
 
-    public EntryService(
+    public ReferenceDataEntryService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
             ReferenceDataObjectVersionRepository versionRepository,
-            EntryRepository entryRepository,
+            ReferenceDataEntryRepository referenceDataEntryRepository,
             CurrentUser currentUser) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
-        this.entryRepository = entryRepository;
+        this.referenceDataEntryRepository = referenceDataEntryRepository;
         this.currentUser = currentUser;
     }
 
     @Transactional(readOnly = true)
-    public List<EntryDto> listEntries(UUID id, UUID versionId) {
+    public List<ReferenceDataEntryDto> listReferenceDataEntries(UUID id, UUID versionId) {
         var version = findVersion(id, versionId);
         var allVersionsDesc = versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id);
-        return entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(id).stream()
-                .map(entry -> toDto(entry, version, allVersionsDesc))
+        return referenceDataEntryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(id).stream()
+                .map(referenceDataEntry -> toDto(referenceDataEntry, version, allVersionsDesc))
                 .toList();
     }
 
     @Transactional
-    public EntryDto createEntry(UUID id, UUID versionId, UpsertEntryRequest request) {
+    public ReferenceDataEntryDto createReferenceDataEntry(
+            UUID id, UUID versionId, UpsertReferenceDataEntryRequest request) {
         var version = findVersion(id, versionId);
         var nation = toNation(request.getNation());
         requireMaintainer(nation);
-        var entry = new Entry(version.getReferenceDataObject(), nation);
-        applyValues(entry, version, request);
-        var saved = entryRepository.save(entry);
+        var referenceDataEntry = new ReferenceDataEntry(version.getReferenceDataObject(), nation);
+        applyValues(referenceDataEntry, version, request);
+        var saved = referenceDataEntryRepository.save(referenceDataEntry);
         return toDto(saved, version, versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id));
     }
 
     @Transactional
-    public EntryDto updateEntry(UUID id, UUID versionId, UUID entryId, UpsertEntryRequest request) {
+    public ReferenceDataEntryDto updateReferenceDataEntry(
+            UUID id, UUID versionId, UUID referenceDataEntryId, UpsertReferenceDataEntryRequest request) {
         var version = findVersion(id, versionId);
-        var entry = findEntry(id, entryId);
+        var referenceDataEntry = findReferenceDataEntry(id, referenceDataEntryId);
         var nation = toNation(request.getNation());
-        requireMaintainer(entry.getNation());
+        requireMaintainer(referenceDataEntry.getNation());
         requireMaintainer(nation);
-        entry.setNation(nation);
-        applyValues(entry, version, request);
-        entry.touch();
-        var saved = entryRepository.save(entry);
+        referenceDataEntry.setNation(nation);
+        applyValues(referenceDataEntry, version, request);
+        referenceDataEntry.touch();
+        var saved = referenceDataEntryRepository.save(referenceDataEntry);
         return toDto(saved, version, versionRepository.findByReferenceDataObjectIdOrderByVersionCodeDesc(id));
     }
 
     @Transactional
-    public void deleteEntry(UUID id, UUID entryId) {
-        var entry = findEntry(id, entryId);
-        requireMaintainer(entry.getNation());
-        entryRepository.delete(entry);
+    public void deleteReferenceDataEntry(UUID id, UUID referenceDataEntryId) {
+        var referenceDataEntry = findReferenceDataEntry(id, referenceDataEntryId);
+        requireMaintainer(referenceDataEntry.getNation());
+        referenceDataEntryRepository.delete(referenceDataEntry);
     }
 
     private void requireMaintainer(@Nullable Nation nation) {
-        if (!currentUser.mayMaintainEntriesFor(nation)) {
+        if (!currentUser.mayMaintainReferenceDataEntriesFor(nation)) {
             throw new ForbiddenException("You are not an NDSF for nation " + nation);
         }
     }
 
-    /**
-     * Replaces the values the entry holds for the fields of the given version. Fields of other
-     * versions are left untouched, fields of this version missing from the request are cleared.
-     */
-    private void applyValues(Entry entry, ReferenceDataObjectVersion version, UpsertEntryRequest request) {
+    private void applyValues(
+            ReferenceDataEntry referenceDataEntry,
+            ReferenceDataObjectVersion version,
+            UpsertReferenceDataEntryRequest request) {
         Map<UUID, Field> versionFields = new HashMap<>();
         version.getFields().forEach(field -> versionFields.put(field.getId(), field));
 
@@ -112,22 +108,22 @@ public class EntryService {
                         "Field " + dto.getFieldId() + " is not linked to version " + version.getId());
             }
             if (isEmpty(dto)) {
-                entry.removeValue(field.getId());
+                referenceDataEntry.removeValue(field.getId());
                 continue;
             }
-            var value = entry.putValue(field);
+            var value = referenceDataEntry.putValue(field);
             value.clear();
             assign(value, field, dto);
         }
 
-        var submittedIds = submitted.stream().map(EntryValueDto::getFieldId).toList();
+        var submittedIds = submitted.stream().map(ReferenceDataEntryValueDto::getFieldId).toList();
         versionFields.keySet().stream()
                 .filter(fieldId -> !submittedIds.contains(fieldId))
                 .toList()
-                .forEach(entry::removeValue);
+                .forEach(referenceDataEntry::removeValue);
     }
 
-    private static void assign(EntryValue value, Field field, EntryValueDto dto) {
+    private static void assign(ReferenceDataEntryValue value, Field field, ReferenceDataEntryValueDto dto) {
         switch (field.getDataType()) {
             case TEXT -> value.setTextValue(requireOnly(dto, field, dto.getTextValue()));
             case NUMBER -> value.setNumberValue(requireOnly(dto, field, dto.getNumberValue()));
@@ -144,10 +140,7 @@ public class EntryService {
                         "Enum option " + optionId + " does not belong to field " + field.getId()));
     }
 
-    /**
-     * The slot matching the field's data type must be set and it must be the only one.
-     */
-    private static <T> T requireOnly(EntryValueDto dto, Field field, @Nullable T expectedSlot) {
+    private static <T> T requireOnly(ReferenceDataEntryValueDto dto, Field field, @Nullable T expectedSlot) {
         if (expectedSlot == null || setSlots(dto) != 1) {
             throw new ConflictException(
                     "Value for field " + field.getId() + " must match data type " + field.getDataType());
@@ -155,11 +148,11 @@ public class EntryService {
         return expectedSlot;
     }
 
-    private static boolean isEmpty(EntryValueDto dto) {
+    private static boolean isEmpty(ReferenceDataEntryValueDto dto) {
         return setSlots(dto) == 0;
     }
 
-    private static int setSlots(EntryValueDto dto) {
+    private static int setSlots(ReferenceDataEntryValueDto dto) {
         var count = 0;
         if (dto.getTextValue() != null) {
             count++;
@@ -176,37 +169,44 @@ public class EntryService {
         return count;
     }
 
-    private static EntryDto toDto(
-            Entry entry, ReferenceDataObjectVersion version, List<ReferenceDataObjectVersion> allVersionsDesc) {
+    private static ReferenceDataEntryDto toDto(
+            ReferenceDataEntry referenceDataEntry,
+            ReferenceDataObjectVersion version,
+            List<ReferenceDataObjectVersion> allVersionsDesc) {
         var values = version.getFields().stream()
-                .map(field -> toValueDto(entry, field))
+                .map(field -> toValueDto(referenceDataEntry, field))
                 .toList();
-        var complete = isComplete(entry, version);
-        var dto = new EntryDto(entry.getId(), entry.getCreatedAt(), entry.getUpdatedAt(), complete, values);
-        dto.setNation(fromNation(entry.getNation()));
-        dto.setLastCompleteVersionCode(findLastCompleteVersionCode(entry, allVersionsDesc));
+        var complete = isComplete(referenceDataEntry, version);
+        var dto = new ReferenceDataEntryDto(
+                referenceDataEntry.getId(),
+                referenceDataEntry.getCreatedAt(),
+                referenceDataEntry.getUpdatedAt(),
+                complete,
+                values);
+        dto.setNation(fromNation(referenceDataEntry.getNation()));
+        dto.setLastCompleteVersionCode(findLastCompleteVersionCode(referenceDataEntry, allVersionsDesc));
         return dto;
     }
 
-    private static boolean isComplete(Entry entry, ReferenceDataObjectVersion version) {
+    private static boolean isComplete(ReferenceDataEntry referenceDataEntry, ReferenceDataObjectVersion version) {
         return version.getFields().stream()
                 .filter(Field::isMandatory)
-                .filter(field -> appliesTo(field, entry.getNation()))
-                .allMatch(field -> entry.findValue(field.getId()).isPresent());
+                .filter(field -> appliesTo(field, referenceDataEntry.getNation()))
+                .allMatch(field -> referenceDataEntry.findValue(field.getId()).isPresent());
     }
 
     @Nullable
     private static Integer findLastCompleteVersionCode(
-            Entry entry, List<ReferenceDataObjectVersion> allVersionsDesc) {
+            ReferenceDataEntry referenceDataEntry, List<ReferenceDataObjectVersion> allVersionsDesc) {
         return allVersionsDesc.stream()
-                .filter(version -> isComplete(entry, version))
+                .filter(version -> isComplete(referenceDataEntry, version))
                 .map(ReferenceDataObjectVersion::getVersionCode)
                 .findFirst()
                 .orElse(null);
     }
 
-    private static boolean appliesTo(Field field, @Nullable Nation entryNation) {
-        return field.getNation() == null || field.getNation() == entryNation;
+    private static boolean appliesTo(Field field, @Nullable Nation referenceDataEntryNation) {
+        return field.getNation() == null || field.getNation() == referenceDataEntryNation;
     }
 
     @Nullable
@@ -219,9 +219,9 @@ public class EntryService {
         return nation == null ? null : energy.eddie.s3.generated.model.Nation.valueOf(nation.name());
     }
 
-    private static EntryValueDto toValueDto(Entry entry, Field field) {
-        var dto = new EntryValueDto(field.getId());
-        entry.findValue(field.getId()).ifPresent(value -> {
+    private static ReferenceDataEntryValueDto toValueDto(ReferenceDataEntry referenceDataEntry, Field field) {
+        var dto = new ReferenceDataEntryValueDto(field.getId());
+        referenceDataEntry.findValue(field.getId()).ifPresent(value -> {
             dto.setTextValue(value.getTextValue());
             dto.setNumberValue(value.getNumberValue());
             dto.setDateValue(value.getDateValue());
@@ -243,15 +243,18 @@ public class EntryService {
         return version;
     }
 
-    private Entry findEntry(UUID id, UUID entryId) {
+    private ReferenceDataEntry findReferenceDataEntry(UUID id, UUID referenceDataEntryId) {
         if (!referenceDataObjectRepository.existsById(id)) {
             throw new NotFoundException("Reference data object " + id + " not found");
         }
-        var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new NotFoundException("Entry " + entryId + " not found"));
-        if (!entry.getReferenceDataObject().getId().equals(id)) {
-            throw new NotFoundException("Entry " + entryId + " does not belong to reference data object " + id);
+        var referenceDataEntry = referenceDataEntryRepository
+                .findById(referenceDataEntryId)
+                .orElseThrow(() ->
+                        new NotFoundException("Reference data entry " + referenceDataEntryId + " not found"));
+        if (!referenceDataEntry.getReferenceDataObject().getId().equals(id)) {
+            throw new NotFoundException("Reference data entry " + referenceDataEntryId
+                    + " does not belong to reference data object " + id);
         }
-        return entry;
+        return referenceDataEntry;
     }
 }

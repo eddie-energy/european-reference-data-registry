@@ -9,11 +9,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import energy.eddie.s3.controllers.EntryController;
+import energy.eddie.s3.controllers.ReferenceDataEntryController;
 import energy.eddie.s3.controllers.ReferenceDataObjectController;
 import energy.eddie.s3.controllers.UiController;
-import energy.eddie.s3.services.EntryService;
-import energy.eddie.s3.generated.model.EntryDto;
+import energy.eddie.s3.services.ReferenceDataEntryService;
+import energy.eddie.s3.generated.model.ReferenceDataEntryDto;
 import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.security.CeedsRole;
@@ -31,7 +31,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(controllers = {ReferenceDataObjectController.class, EntryController.class, UiController.class})
+@WebMvcTest(controllers = {ReferenceDataObjectController.class, ReferenceDataEntryController.class, UiController.class})
 @Import({SecurityConfig.class, CorsConfig.class, OrganizationRolesConverter.class})
 class SecurityConfigTest {
 
@@ -44,7 +44,7 @@ class SecurityConfigTest {
     private ReferenceDataObjectService referenceDataObjectService;
 
     @MockitoBean
-    private EntryService entryService;
+    private ReferenceDataEntryService referenceDataEntryService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -89,14 +89,39 @@ class SecurityConfigTest {
     }
 
     @Test
-    void entryWriteAsNdsf_isAllowed() throws Exception {
-        given(entryService.createEntry(any(), any(), any())).willReturn(new EntryDto());
+    void referenceDataEntryWriteAsNdsf_isAllowed() throws Exception {
+        given(referenceDataEntryService.createReferenceDataEntry(any(), any(), any()))
+                .willReturn(new ReferenceDataEntryDto());
 
-        mockMvc.perform(post("/api/reference-data-objects/{id}/versions/{versionId}/entries", ID, ID)
+        mockMvc.perform(post(
+                                "/api/reference-data-objects/{id}/versions/{versionId}/reference-data-entries",
+                                ID,
+                                ID)
                         .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority())))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nation\":\"AUT\",\"values\":[]}"))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void referenceDataEntryReadWithoutToken_isAllowed() throws Exception {
+        given(referenceDataEntryService.listReferenceDataEntries(any(), any())).willReturn(List.of());
+
+        mockMvc.perform(get(
+                        "/api/reference-data-objects/{id}/versions/{versionId}/reference-data-entries",
+                        ID,
+                        ID))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void legacyEntryRoute_isNotFound() throws Exception {
+        mockMvc.perform(post("/api/reference-data-objects/{id}/versions/{versionId}/entries", ID, ID)
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nation\":\"AUT\",\"values\":[]}"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -9,16 +9,16 @@ import static org.mockito.Mockito.when;
 import energy.eddie.s3.exceptions.ConflictException;
 import energy.eddie.s3.exceptions.ForbiddenException;
 import energy.eddie.s3.exceptions.NotFoundException;
-import energy.eddie.s3.generated.model.EntryValueDto;
+import energy.eddie.s3.generated.model.ReferenceDataEntryValueDto;
 import energy.eddie.s3.generated.model.Nation;
-import energy.eddie.s3.generated.model.UpsertEntryRequest;
+import energy.eddie.s3.generated.model.UpsertReferenceDataEntryRequest;
 import energy.eddie.s3.models.referencedata.DataType;
-import energy.eddie.s3.models.referencedata.Entry;
+import energy.eddie.s3.models.referencedata.ReferenceDataEntry;
 import energy.eddie.s3.models.referencedata.Field;
 import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
-import energy.eddie.s3.repositories.EntryRepository;
+import energy.eddie.s3.repositories.ReferenceDataEntryRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
 import energy.eddie.s3.security.CurrentUser;
@@ -36,24 +36,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
-class EntryServiceTest {
+class ReferenceDataEntryServiceTest {
 
     @Mock
     private ReferenceDataObjectRepository referenceDataObjectRepository;
     @Mock
     private ReferenceDataObjectVersionRepository versionRepository;
     @Mock
-    private EntryRepository entryRepository;
+    private ReferenceDataEntryRepository referenceDataEntryRepository;
     @Mock
     private CurrentUser currentUser;
 
     @InjectMocks
-    private EntryService service;
+    private ReferenceDataEntryService service;
 
     @BeforeEach
     void grantOperationalEntity() {
         lenient().when(currentUser.maySeeDrafts()).thenReturn(true);
-        lenient().when(currentUser.mayMaintainEntriesFor(any())).thenReturn(true);
+        lenient().when(currentUser.mayMaintainReferenceDataEntriesFor(any())).thenReturn(true);
     }
 
     private static final UUID OBJECT_ID = UUID.randomUUID();
@@ -95,8 +95,8 @@ class EntryServiceTest {
         return field;
     }
 
-    private static UpsertEntryRequest request(List<EntryValueDto> values) {
-        return new UpsertEntryRequest(values).nation(Nation.AUT);
+    private static UpsertReferenceDataEntryRequest request(List<ReferenceDataEntryValueDto> values) {
+        return new UpsertReferenceDataEntryRequest(values).nation(Nation.AUT);
     }
 
     private static Field enumField(String name, String... options) {
@@ -108,11 +108,11 @@ class EntryServiceTest {
         return field;
     }
 
-    private static Entry entry(ReferenceDataObject rdo) {
-        var entry = new Entry(rdo, energy.eddie.s3.models.referencedata.Nation.AUT);
-        ReflectionTestUtils.setField(entry, "id", UUID.randomUUID());
-        ReflectionTestUtils.setField(entry, "createdAt", Instant.now());
-        return entry;
+    private static ReferenceDataEntry referenceDataEntry(ReferenceDataObject rdo) {
+        var referenceDataEntry = new ReferenceDataEntry(rdo, energy.eddie.s3.models.referencedata.Nation.AUT);
+        ReflectionTestUtils.setField(referenceDataEntry, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(referenceDataEntry, "createdAt", Instant.now());
+        return referenceDataEntry;
     }
 
     private void mockVersion(ReferenceDataObjectVersion version) {
@@ -120,8 +120,8 @@ class EntryServiceTest {
     }
 
     private void mockSave() {
-        when(entryRepository.save(any(Entry.class))).thenAnswer(invocation -> {
-            Entry saved = invocation.getArgument(0);
+        when(referenceDataEntryRepository.save(any(ReferenceDataEntry.class))).thenAnswer(invocation -> {
+            ReferenceDataEntry saved = invocation.getArgument(0);
             if (saved.getId() == null) {
                 ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
             }
@@ -130,47 +130,47 @@ class EntryServiceTest {
     }
 
     @Test
-    void createEntry_asNdsfOfAnotherNation_throwsForbidden() {
-        when(currentUser.mayMaintainEntriesFor(energy.eddie.s3.models.referencedata.Nation.GER))
+    void createReferenceDataEntry_asNdsfOfAnotherNation_throwsForbidden() {
+        when(currentUser.mayMaintainReferenceDataEntriesFor(energy.eddie.s3.models.referencedata.Nation.GER))
                 .thenReturn(false);
         var rdo = rdo();
         mockVersion(publishedVersion(rdo));
 
-        assertThatThrownBy(() -> service.createEntry(
-                        OBJECT_ID, VERSION_ID, new UpsertEntryRequest(List.of()).nation(Nation.GER)))
+        assertThatThrownBy(() -> service.createReferenceDataEntry(
+                        OBJECT_ID, VERSION_ID, new UpsertReferenceDataEntryRequest(List.of()).nation(Nation.GER)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
     @Test
-    void createEntry_asNdsfOfThatNation_isAllowed() {
-        when(currentUser.mayMaintainEntriesFor(energy.eddie.s3.models.referencedata.Nation.AUT))
+    void createReferenceDataEntry_asNdsfOfThatNation_isAllowed() {
+        when(currentUser.mayMaintainReferenceDataEntriesFor(energy.eddie.s3.models.referencedata.Nation.AUT))
                 .thenReturn(true);
         var rdo = rdo();
         mockVersion(publishedVersion(rdo));
         mockSave();
 
-        assertThat(service.createEntry(OBJECT_ID, VERSION_ID, request(List.of())).getNation())
+        assertThat(service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request(List.of())).getNation())
                 .isEqualTo(Nation.AUT);
     }
 
     @Test
-    void listEntries_ofADraftVersion_isNotFoundForRolesThatDoNotSeeDrafts() {
+    void listReferenceDataEntries_ofADraftVersion_isNotFoundForRolesThatDoNotSeeDrafts() {
         when(currentUser.maySeeDrafts()).thenReturn(false);
         mockVersion(version(rdo()));
 
-        assertThatThrownBy(() -> service.listEntries(OBJECT_ID, VERSION_ID)).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.listReferenceDataEntries(OBJECT_ID, VERSION_ID)).isInstanceOf(NotFoundException.class);
     }
 
     @Test
-    void listEntries_ofADraftVersion_isAllowedForRolesThatSeeDrafts() {
+    void listReferenceDataEntries_ofADraftVersion_isAllowedForRolesThatSeeDrafts() {
         var rdo = rdo();
         var draft = version(rdo);
         mockVersion(draft);
         mockAllVersionsDesc(draft);
-        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID))
+        when(referenceDataEntryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID))
                 .thenReturn(List.of());
 
-        assertThat(service.listEntries(OBJECT_ID, VERSION_ID)).isEmpty();
+        assertThat(service.listReferenceDataEntries(OBJECT_ID, VERSION_ID)).isEmpty();
     }
 
     private static ReferenceDataObjectVersion publishedVersion(ReferenceDataObject rdo, Field... fields) {
@@ -180,16 +180,16 @@ class EntryServiceTest {
     }
 
     @Test
-    void createEntry_storesTypedValues() {
+    void createReferenceDataEntry_storesTypedValues() {
         var rdo = rdo();
         var text = field("name", DataType.TEXT, true);
         var number = field("price", DataType.NUMBER, false);
         mockVersion(version(rdo, text, number));
         mockSave();
 
-        var result = service.createEntry(OBJECT_ID, VERSION_ID, request(List.of(
-                new EntryValueDto(text.getId()).textValue("Vienna"),
-                new EntryValueDto(number.getId()).numberValue(new BigDecimal("42.5")))));
+        var result = service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request(List.of(
+                new ReferenceDataEntryValueDto(text.getId()).textValue("Vienna"),
+                new ReferenceDataEntryValueDto(number.getId()).numberValue(new BigDecimal("42.5")))));
 
         assertThat(result.getComplete()).isTrue();
         assertThat(result.getValues()).hasSize(2);
@@ -198,15 +198,15 @@ class EntryServiceTest {
     }
 
     @Test
-    void createEntry_missingMandatoryValue_isIncomplete() {
+    void createReferenceDataEntry_missingMandatoryValue_isIncomplete() {
         var rdo = rdo();
         var text = field("name", DataType.TEXT, true);
         var mandatoryNumber = field("price", DataType.NUMBER, true);
         mockVersion(version(rdo, text, mandatoryNumber));
         mockSave();
 
-        var result = service.createEntry(OBJECT_ID, VERSION_ID, request(List.of(
-                new EntryValueDto(text.getId()).textValue("Vienna"))));
+        var result = service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request(List.of(
+                new ReferenceDataEntryValueDto(text.getId()).textValue("Vienna"))));
 
         assertThat(result.getComplete()).isFalse();
         assertThat(result.getValues()).hasSize(2);
@@ -214,167 +214,167 @@ class EntryServiceTest {
     }
 
     @Test
-    void createEntry_typeMismatch_throwsConflict() {
+    void createReferenceDataEntry_typeMismatch_throwsConflict() {
         var rdo = rdo();
         var number = field("price", DataType.NUMBER, false);
         mockVersion(version(rdo, number));
 
-        var request = request(List.of(new EntryValueDto(number.getId()).textValue("nope")));
+        var request = request(List.of(new ReferenceDataEntryValueDto(number.getId()).textValue("nope")));
 
-        assertThatThrownBy(() -> service.createEntry(OBJECT_ID, VERSION_ID, request))
+        assertThatThrownBy(() -> service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request))
                 .isInstanceOf(ConflictException.class);
     }
 
     @Test
-    void createEntry_multipleValueSlots_throwsConflict() {
+    void createReferenceDataEntry_multipleValueSlots_throwsConflict() {
         var rdo = rdo();
         var text = field("name", DataType.TEXT, false);
         mockVersion(version(rdo, text));
 
         var request = request(List.of(
-                new EntryValueDto(text.getId()).textValue("Vienna").numberValue(BigDecimal.ONE)));
+                new ReferenceDataEntryValueDto(text.getId()).textValue("Vienna").numberValue(BigDecimal.ONE)));
 
-        assertThatThrownBy(() -> service.createEntry(OBJECT_ID, VERSION_ID, request))
+        assertThatThrownBy(() -> service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request))
                 .isInstanceOf(ConflictException.class);
     }
 
     @Test
-    void createEntry_enumOptionOfAnotherField_throwsConflict() {
+    void createReferenceDataEntry_enumOptionOfAnotherField_throwsConflict() {
         var rdo = rdo();
         var role = enumField("role", "DSO");
         var foreign = enumField("other", "TSO");
         mockVersion(version(rdo, role));
 
         var request = request(List.of(
-                new EntryValueDto(role.getId()).enumOptionId(foreign.getOptions().getFirst().getId())));
+                new ReferenceDataEntryValueDto(role.getId()).enumOptionId(foreign.getOptions().getFirst().getId())));
 
-        assertThatThrownBy(() -> service.createEntry(OBJECT_ID, VERSION_ID, request))
+        assertThatThrownBy(() -> service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request))
                 .isInstanceOf(ConflictException.class);
     }
 
     @Test
-    void createEntry_enumOptionOfField_isStored() {
+    void createReferenceDataEntry_enumOptionOfField_isStored() {
         var rdo = rdo();
         var role = enumField("role", "DSO", "TSO");
         mockVersion(version(rdo, role));
         mockSave();
 
         var optionId = role.getOptions().getFirst().getId();
-        var result = service.createEntry(OBJECT_ID, VERSION_ID, request(List.of(
-                new EntryValueDto(role.getId()).enumOptionId(optionId))));
+        var result = service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request(List.of(
+                new ReferenceDataEntryValueDto(role.getId()).enumOptionId(optionId))));
 
         assertThat(result.getValues().getFirst().getEnumOptionId()).isEqualTo(optionId);
     }
 
     @Test
-    void createEntry_fieldNotInVersion_throwsNotFound() {
+    void createReferenceDataEntry_fieldNotInVersion_throwsNotFound() {
         var rdo = rdo();
         mockVersion(version(rdo, field("name", DataType.TEXT, false)));
 
-        var request = request(List.of(new EntryValueDto(UUID.randomUUID()).textValue("x")));
+        var request = request(List.of(new ReferenceDataEntryValueDto(UUID.randomUUID()).textValue("x")));
 
-        assertThatThrownBy(() -> service.createEntry(OBJECT_ID, VERSION_ID, request))
+        assertThatThrownBy(() -> service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request))
                 .isInstanceOf(NotFoundException.class);
     }
 
     @Test
-    void updateEntry_omittedField_clearsItsValue() {
+    void updateReferenceDataEntry_omittedField_clearsItsValue() {
         var rdo = rdo();
         var text = field("name", DataType.TEXT, false);
         var version = version(rdo, text);
-        var entry = entry(rdo);
-        entry.putValue(text).setTextValue("Vienna");
+        var referenceDataEntry = referenceDataEntry(rdo);
+        referenceDataEntry.putValue(text).setTextValue("Vienna");
         mockVersion(version);
         when(referenceDataObjectRepository.existsById(OBJECT_ID)).thenReturn(true);
-        when(entryRepository.findById(entry.getId())).thenReturn(Optional.of(entry));
+        when(referenceDataEntryRepository.findById(referenceDataEntry.getId())).thenReturn(Optional.of(referenceDataEntry));
         mockSave();
 
-        var result = service.updateEntry(OBJECT_ID, VERSION_ID, entry.getId(), request(List.of()));
+        var result = service.updateReferenceDataEntry(OBJECT_ID, VERSION_ID, referenceDataEntry.getId(), request(List.of()));
 
-        assertThat(entry.getValues()).isEmpty();
+        assertThat(referenceDataEntry.getValues()).isEmpty();
         assertThat(result.getValues().getFirst().getTextValue()).isNull();
     }
 
     @Test
-    void updateEntry_leavesValuesOfFieldsOutsideTheVersionUntouched() {
+    void updateReferenceDataEntry_leavesValuesOfFieldsOutsideTheVersionUntouched() {
         var rdo = rdo();
         var inVersion = field("name", DataType.TEXT, false);
         var otherVersionField = field("legacy", DataType.TEXT, false);
-        var entry = entry(rdo);
-        entry.putValue(otherVersionField).setTextValue("kept");
+        var referenceDataEntry = referenceDataEntry(rdo);
+        referenceDataEntry.putValue(otherVersionField).setTextValue("kept");
         mockVersion(version(rdo, inVersion));
         when(referenceDataObjectRepository.existsById(OBJECT_ID)).thenReturn(true);
-        when(entryRepository.findById(entry.getId())).thenReturn(Optional.of(entry));
+        when(referenceDataEntryRepository.findById(referenceDataEntry.getId())).thenReturn(Optional.of(referenceDataEntry));
         mockSave();
 
-        service.updateEntry(OBJECT_ID, VERSION_ID, entry.getId(), request(List.of(
-                new EntryValueDto(inVersion.getId()).textValue("Vienna"))));
+        service.updateReferenceDataEntry(OBJECT_ID, VERSION_ID, referenceDataEntry.getId(), request(List.of(
+                new ReferenceDataEntryValueDto(inVersion.getId()).textValue("Vienna"))));
 
-        assertThat(entry.findValue(otherVersionField.getId())).isPresent();
-        assertThat(entry.findValue(otherVersionField.getId()).orElseThrow().getTextValue()).isEqualTo("kept");
+        assertThat(referenceDataEntry.findValue(otherVersionField.getId())).isPresent();
+        assertThat(referenceDataEntry.findValue(otherVersionField.getId()).orElseThrow().getTextValue()).isEqualTo("kept");
     }
 
     @Test
-    void deleteEntry_ofAnotherObject_throwsNotFound() {
+    void deleteReferenceDataEntry_ofAnotherObject_throwsNotFound() {
         var otherRdo = new ReferenceDataObject("Other", "desc");
         ReflectionTestUtils.setField(otherRdo, "id", UUID.randomUUID());
-        var entry = entry(otherRdo);
+        var referenceDataEntry = referenceDataEntry(otherRdo);
         when(referenceDataObjectRepository.existsById(OBJECT_ID)).thenReturn(true);
-        when(entryRepository.findById(entry.getId())).thenReturn(Optional.of(entry));
+        when(referenceDataEntryRepository.findById(referenceDataEntry.getId())).thenReturn(Optional.of(referenceDataEntry));
 
-        var entryId = entry.getId();
+        var referenceDataEntryId = referenceDataEntry.getId();
 
-        assertThatThrownBy(() -> service.deleteEntry(OBJECT_ID, entryId))
+        assertThatThrownBy(() -> service.deleteReferenceDataEntry(OBJECT_ID, referenceDataEntryId))
                 .isInstanceOf(NotFoundException.class);
     }
 
     @Test
-    void createEntry_mandatoryFieldOfAnotherNation_doesNotBlockCompleteness() {
+    void createReferenceDataEntry_mandatoryFieldOfAnotherNation_doesNotBlockCompleteness() {
         var rdo = rdo();
         var shared = field("name", DataType.TEXT, true);
         var frenchOnly = field("iban", DataType.TEXT, true, energy.eddie.s3.models.referencedata.Nation.FRA);
         mockVersion(version(rdo, shared, frenchOnly));
         mockSave();
 
-        var result = service.createEntry(OBJECT_ID, VERSION_ID, request(List.of(
-                new EntryValueDto(shared.getId()).textValue("Vienna"))));
+        var result = service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request(List.of(
+                new ReferenceDataEntryValueDto(shared.getId()).textValue("Vienna"))));
 
         assertThat(result.getNation()).isEqualTo(Nation.AUT);
         assertThat(result.getComplete()).isTrue();
     }
 
     @Test
-    void listEntries_projectsStoredValuesOntoTheRequestedVersion() {
+    void listReferenceDataEntries_projectsStoredValuesOntoTheRequestedVersion() {
         var rdo = rdo();
         var v1Field = field("name", DataType.TEXT, true);
         var v2Field = field("country", DataType.TEXT, true);
-        var entry = entry(rdo);
-        entry.putValue(v1Field).setTextValue("Vienna");
+        var referenceDataEntry = referenceDataEntry(rdo);
+        referenceDataEntry.putValue(v1Field).setTextValue("Vienna");
         mockVersion(version(rdo, v1Field, v2Field));
-        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(entry));
+        when(referenceDataEntryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(referenceDataEntry));
 
-        var result = service.listEntries(OBJECT_ID, VERSION_ID);
+        var result = service.listReferenceDataEntries(OBJECT_ID, VERSION_ID);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getComplete()).isFalse();
-        assertThat(result.getFirst().getValues()).extracting(EntryValueDto::getTextValue)
+        assertThat(result.getFirst().getValues()).extracting(ReferenceDataEntryValueDto::getTextValue)
                 .containsExactly("Vienna", null);
     }
 
     @Test
-    void listEntries_incomplete_reportsLastCompleteVersionCode() {
+    void listReferenceDataEntries_incomplete_reportsLastCompleteVersionCode() {
         var rdo = rdo();
         var name = field("name", DataType.TEXT, true);
         var country = field("country", DataType.TEXT, true);
         var v1 = version(rdo, 1, name);
         var v2 = version(rdo, 2, name, country);
-        var entry = entry(rdo);
-        entry.putValue(name).setTextValue("Vienna");
+        var referenceDataEntry = referenceDataEntry(rdo);
+        referenceDataEntry.putValue(name).setTextValue("Vienna");
         mockVersion(v2);
         mockAllVersionsDesc(v2, v1);
-        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(entry));
+        when(referenceDataEntryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(referenceDataEntry));
 
-        var result = service.listEntries(OBJECT_ID, VERSION_ID);
+        var result = service.listReferenceDataEntries(OBJECT_ID, VERSION_ID);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getComplete()).isFalse();
@@ -382,16 +382,16 @@ class EntryServiceTest {
     }
 
     @Test
-    void listEntries_neverComplete_lastCompleteVersionCodeIsNull() {
+    void listReferenceDataEntries_neverComplete_lastCompleteVersionCodeIsNull() {
         var rdo = rdo();
         var mandatory = field("name", DataType.TEXT, true);
         var v1 = version(rdo, 1, mandatory);
-        var entry = entry(rdo);
+        var referenceDataEntry = referenceDataEntry(rdo);
         mockVersion(v1);
         mockAllVersionsDesc(v1);
-        when(entryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(entry));
+        when(referenceDataEntryRepository.findByReferenceDataObjectIdOrderByCreatedAtAsc(OBJECT_ID)).thenReturn(List.of(referenceDataEntry));
 
-        var result = service.listEntries(OBJECT_ID, VERSION_ID);
+        var result = service.listReferenceDataEntries(OBJECT_ID, VERSION_ID);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getComplete()).isFalse();
@@ -399,7 +399,7 @@ class EntryServiceTest {
     }
 
     @Test
-    void createEntry_complete_lastCompleteVersionCodeMatchesCurrentVersion() {
+    void createReferenceDataEntry_complete_lastCompleteVersionCodeMatchesCurrentVersion() {
         var rdo = rdo();
         var text = field("name", DataType.TEXT, true);
         var v1 = version(rdo, 1, text);
@@ -407,8 +407,8 @@ class EntryServiceTest {
         mockAllVersionsDesc(v1);
         mockSave();
 
-        var result = service.createEntry(OBJECT_ID, VERSION_ID, request(List.of(
-                new EntryValueDto(text.getId()).textValue("Vienna"))));
+        var result = service.createReferenceDataEntry(OBJECT_ID, VERSION_ID, request(List.of(
+                new ReferenceDataEntryValueDto(text.getId()).textValue("Vienna"))));
 
         assertThat(result.getComplete()).isTrue();
         assertThat(result.getLastCompleteVersionCode()).isEqualTo(1);

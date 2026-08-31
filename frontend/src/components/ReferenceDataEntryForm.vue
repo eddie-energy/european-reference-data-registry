@@ -7,11 +7,11 @@ import { ndsfNations, userRole } from '@/stores/userInfo'
 
 const {
   fields,
-  entry,
+  referenceDataEntry,
   submitting = false,
 } = defineProps<{
   fields: components['schemas']['FieldDto'][]
-  entry?: components['schemas']['EntryDto']
+  referenceDataEntry?: components['schemas']['ReferenceDataEntryDto']
   submitting?: boolean
 }>()
 
@@ -19,17 +19,17 @@ const emit = defineEmits<{
   submit: [
     payload: {
       nation?: components['schemas']['Nation']
-      values: components['schemas']['EntryValueDto'][]
+      values: components['schemas']['ReferenceDataEntryValueDto'][]
     },
   ]
   cancel: []
 }>()
 
-const nation = ref<components['schemas']['Nation'] | ''>(entry?.nation ?? '')
+const nation = ref<components['schemas']['Nation'] | ''>(referenceDataEntry?.nation ?? '')
 
 const isOperationalEntity = computed(() => userRole.value === 'operationalEntity')
 
-const mayOmitNation = computed(() => isOperationalEntity.value && !entry?.nation)
+const mayOmitNation = computed(() => isOperationalEntity.value && !referenceDataEntry?.nation)
 
 const nationOptions = computed(() =>
   isOperationalEntity.value
@@ -42,7 +42,7 @@ const visibleFields = computed(() =>
 )
 
 const initial = (field: components['schemas']['FieldDto']) => {
-  const value = entry?.values.find((candidate) => candidate.fieldId === field.id)
+  const value = referenceDataEntry?.values.find((candidate) => candidate.fieldId === field.id)
   switch (field.dataType) {
     case 'NUMBER':
       return value?.numberValue?.toString() ?? ''
@@ -62,7 +62,7 @@ const errorMessage = ref('')
 
 const toValue = (
   field: components['schemas']['FieldDto'],
-): components['schemas']['EntryValueDto'] => {
+): components['schemas']['ReferenceDataEntryValueDto'] => {
   const draft = String(drafts.value[field.id] ?? '').trim()
   if (!draft) return { fieldId: field.id }
   switch (field.dataType) {
@@ -80,8 +80,8 @@ const toValue = (
 const submit = () => {
   errorMessage.value = ''
   if (!nation.value && !mayOmitNation.value) {
-    errorMessage.value = entry?.nation
-      ? 'This entry has country-specific values and cannot be changed to all countries'
+    errorMessage.value = referenceDataEntry?.nation
+      ? 'This reference data entry has country-specific values and cannot be changed to all countries'
       : 'Select a country'
     return
   }
@@ -100,7 +100,7 @@ const submit = () => {
 </script>
 
 <template>
-  <form class="entry-form" @submit.prevent="submit">
+  <form class="reference-data-entry-form" @submit.prevent="submit">
     <label>
       Country
       <span v-if="!mayOmitNation" class="mandatory" title="Mandatory">*</span>
@@ -152,14 +152,14 @@ const submit = () => {
         size="compact"
         :disabled="!fields.length || submitting"
       >
-        {{ submitting ? 'Saving…' : 'Save entry' }}
+        {{ submitting ? 'Saving…' : 'Save Reference Data Entry' }}
       </ButtonLink>
     </div>
   </form>
 </template>
 
 <style scoped>
-.entry-form {
+.reference-data-entry-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);

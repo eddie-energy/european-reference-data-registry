@@ -3,7 +3,7 @@ import { referenceDataObject, updateReferenceDataObject } from '@/stores/referen
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { userRole } from '@/stores/userInfo'
-import EntryTable from '@/components/EntryTable.vue'
+import ReferenceDataEntryTable from '@/components/ReferenceDataEntryTable.vue'
 import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
 
 const { id } = defineProps<{ id: string }>()
@@ -148,7 +148,7 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
             </option>
           </select>
         </div>
-        <EntryTable
+        <ReferenceDataEntryTable
           v-if="browseVersion"
           :id
           :version="browseVersion"

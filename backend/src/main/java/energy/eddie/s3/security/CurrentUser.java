@@ -36,7 +36,7 @@ public class CurrentUser {
                 && hasAuthority(OrganizationRolesConverter.NDSF_NATION_AUTHORITY_PREFIX + nation.name());
     }
 
-    public boolean mayMaintainEntriesFor(@Nullable Nation nation) {
+    public boolean mayMaintainReferenceDataEntriesFor(@Nullable Nation nation) {
         return isOperationalEntity() || isNdsfFor(nation);
     }
 

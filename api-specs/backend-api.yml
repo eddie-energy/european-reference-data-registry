@@ -13,8 +13,8 @@ servers:
 tags:
   - name: ReferenceData
     description: Manage reference data objects, their versions and fields
-  - name: Entries
-    description: Manage the data entries of a reference data object
+  - name: Reference Data Entries
+    description: Manage reference data entries of a reference data object
   - name: Me
     description: Information about the authenticated caller
 
@@ -275,14 +275,14 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
-  /reference-data-objects/{id}/versions/{versionId}/entries:
+  /reference-data-objects/{id}/versions/{versionId}/reference-data-entries:
     get:
-      tags: [ Entries ]
+      tags: [ Reference Data Entries ]
       security: [ ]
-      operationId: listEntries
-      summary: List the entries of a reference data object projected onto a version
+      operationId: listReferenceDataEntries
+      summary: List reference data entries of a reference data object projected onto a version
       description: >-
-        Entries belong to the reference data object, not to a single version. The response
+        Reference data entries belong to the reference data object, not to a single version. The response
         contains one value per field linked to the given version; values of fields that are
         not linked to this version are omitted but remain stored.
       parameters:
@@ -296,15 +296,15 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/EntryDto'
+                  $ref: '#/components/schemas/ReferenceDataEntryDto'
         '404':
           $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
-      tags: [ Entries ]
-      operationId: createEntry
-      summary: Create an entry using the field set of the given version
+      tags: [ Reference Data Entries ]
+      operationId: createReferenceDataEntry
+      summary: Create a reference data entry using the field set of the given version
       parameters:
         - $ref: '#/components/parameters/ReferenceDataObjectId'
         - $ref: '#/components/parameters/VersionId'
@@ -313,14 +313,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpsertEntryRequest'
+              $ref: '#/components/schemas/UpsertReferenceDataEntryRequest'
       responses:
         '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntryDto'
+                $ref: '#/components/schemas/ReferenceDataEntryDto'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -330,31 +330,31 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
-  /reference-data-objects/{id}/versions/{versionId}/entries/{entryId}:
+  /reference-data-objects/{id}/versions/{versionId}/reference-data-entries/{referenceDataEntryId}:
     put:
-      tags: [ Entries ]
-      operationId: updateEntry
-      summary: Replace the values an entry holds for the fields of the given version
+      tags: [ Reference Data Entries ]
+      operationId: updateReferenceDataEntry
+      summary: Replace values held by a reference data entry for fields of the given version
       description: >-
         Only fields linked to the given version are touched. Omitting a field or sending it
         without a value deletes the stored value for that field.
       parameters:
         - $ref: '#/components/parameters/ReferenceDataObjectId'
         - $ref: '#/components/parameters/VersionId'
-        - $ref: '#/components/parameters/EntryId'
+        - $ref: '#/components/parameters/ReferenceDataEntryId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpsertEntryRequest'
+              $ref: '#/components/schemas/UpsertReferenceDataEntryRequest'
       responses:
         '200':
           description: Updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntryDto'
+                $ref: '#/components/schemas/ReferenceDataEntryDto'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -364,14 +364,14 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
-  /reference-data-objects/{id}/entries/{entryId}:
+  /reference-data-objects/{id}/reference-data-entries/{referenceDataEntryId}:
     delete:
-      tags: [ Entries ]
-      operationId: deleteEntry
-      summary: Delete an entry and all of its values
+      tags: [ Reference Data Entries ]
+      operationId: deleteReferenceDataEntry
+      summary: Delete a reference data entry and all of its values
       parameters:
         - $ref: '#/components/parameters/ReferenceDataObjectId'
-        - $ref: '#/components/parameters/EntryId'
+        - $ref: '#/components/parameters/ReferenceDataEntryId'
       responses:
         '204':
           description: Deleted
@@ -420,8 +420,8 @@ components:
       schema:
         type: string
         format: uuid
-    EntryId:
-      name: entryId
+    ReferenceDataEntryId:
+      name: referenceDataEntryId
       in: path
       required: true
       schema:
@@ -474,7 +474,7 @@ components:
             $ref: '#/components/schemas/Role'
         ndsfNations:
           type: array
-          description: Nations the caller may maintain entries for as NDSF
+          description: Nations whose reference data entries the caller may maintain as NDSF
           items:
             $ref: '#/components/schemas/Nation'
         organizations:
@@ -644,12 +644,12 @@ components:
           items:
             $ref: '#/components/schemas/FieldDto'
 
-    EntryValueDto:
+    ReferenceDataEntryValueDto:
       type: object
       description: >-
         Exactly one value property may be set and it must match the `dataType` of the field:
         TEXT -> `textValue`, NUMBER -> `numberValue`, DATE -> `dateValue`, ENUM -> `enumOptionId`.
-        All value properties absent means the entry has no value for that field.
+        All value properties absent means the reference data entry has no value for that field.
       required: [ fieldId ]
       properties:
         fieldId:
@@ -666,7 +666,7 @@ components:
           type: string
           format: uuid
 
-    UpsertEntryRequest:
+    UpsertReferenceDataEntryRequest:
       type: object
       required: [ values ]
       properties:
@@ -675,9 +675,9 @@ components:
         values:
           type: array
           items:
-            $ref: '#/components/schemas/EntryValueDto'
+            $ref: '#/components/schemas/ReferenceDataEntryValueDto'
 
-    EntryDto:
+    ReferenceDataEntryDto:
       type: object
       required: [ id, createdAt, updatedAt, complete, values ]
       properties:
@@ -699,13 +699,13 @@ components:
           type: integer
           format: int32
           description: >-
-            The highest version code this entry was complete for, across all of the object's
+            The highest version code this reference data entry was complete for, across all of the object's
             versions, or absent if it has never been complete for any version.
         values:
           type: array
           description: One item per field linked to the requested version.
           items:
-            $ref: '#/components/schemas/EntryValueDto'
+            $ref: '#/components/schemas/ReferenceDataEntryValueDto'
 
     ReferenceDataObjectDetail:
       type: object

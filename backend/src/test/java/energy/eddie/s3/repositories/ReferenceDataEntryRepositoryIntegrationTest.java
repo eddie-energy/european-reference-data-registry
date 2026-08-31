@@ -2,15 +2,15 @@ package energy.eddie.s3.repositories;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import energy.eddie.s3.generated.model.EntryValueDto;
+import energy.eddie.s3.generated.model.ReferenceDataEntryValueDto;
 import energy.eddie.s3.generated.model.Nation;
-import energy.eddie.s3.generated.model.UpsertEntryRequest;
+import energy.eddie.s3.generated.model.UpsertReferenceDataEntryRequest;
 import energy.eddie.s3.models.referencedata.DataType;
 import energy.eddie.s3.models.referencedata.Field;
 import energy.eddie.s3.models.referencedata.PublishState;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
-import energy.eddie.s3.services.EntryService;
+import energy.eddie.s3.services.ReferenceDataEntryService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Transactional
-class EntryRepositoryIntegrationTest {
+class ReferenceDataEntryRepositoryIntegrationTest {
 
     @Autowired
     private ReferenceDataObjectRepository referenceDataObjectRepository;
@@ -37,9 +37,9 @@ class EntryRepositoryIntegrationTest {
     @Autowired
     private FieldRepository fieldRepository;
     @Autowired
-    private EntryValueRepository entryValueRepository;
+    private ReferenceDataEntryValueRepository referenceDataEntryValueRepository;
     @Autowired
-    private EntryService entryService;
+    private ReferenceDataEntryService referenceDataEntryService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -63,7 +63,7 @@ class EntryRepositoryIntegrationTest {
     }
 
     @Test
-    void entryCreatedInV1_survivesIntoV2AndIsFlaggedIncomplete() {
+    void referenceDataEntryCreatedInV1_survivesIntoV2AndIsFlaggedIncomplete() {
         var rdo = new ReferenceDataObject("Tariffs", "desc");
         var v1 = new ReferenceDataObjectVersion(rdo, 1, PublishState.DRAFT);
         rdo.getVersions().add(v1);
@@ -71,8 +71,8 @@ class EntryRepositoryIntegrationTest {
         v1.getFields().add(name);
         var savedRdo = referenceDataObjectRepository.save(rdo);
 
-        var created = entryService.createEntry(savedRdo.getId(), v1.getId(), new UpsertEntryRequest(List.of(
-                new EntryValueDto(name.getId()).textValue("Vienna"))).nation(Nation.AUT));
+        var created = referenceDataEntryService.createReferenceDataEntry(savedRdo.getId(), v1.getId(), new UpsertReferenceDataEntryRequest(List.of(
+                new ReferenceDataEntryValueDto(name.getId()).textValue("Vienna"))).nation(Nation.AUT));
         assertThat(created.getComplete()).isTrue();
 
         var v2 = new ReferenceDataObjectVersion(savedRdo, 2, PublishState.DRAFT);
@@ -83,20 +83,24 @@ class EntryRepositoryIntegrationTest {
         entityManager.flush();
         entityManager.clear();
 
-        var v1Entries = entryService.listEntries(savedRdo.getId(), v1.getId());
-        var v2Entries = entryService.listEntries(savedRdo.getId(), v2.getId());
+        var v1ReferenceDataEntries =
+                referenceDataEntryService.listReferenceDataEntries(savedRdo.getId(), v1.getId());
+        var v2ReferenceDataEntries =
+                referenceDataEntryService.listReferenceDataEntries(savedRdo.getId(), v2.getId());
 
-        assertThat(v1Entries).hasSize(1);
-        assertThat(v1Entries.getFirst().getComplete()).isTrue();
-        assertThat(v1Entries.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
-        assertThat(v1Entries.getFirst().getValues()).extracting(EntryValueDto::getTextValue)
+        assertThat(v1ReferenceDataEntries).hasSize(1);
+        assertThat(v1ReferenceDataEntries.getFirst().getComplete()).isTrue();
+        assertThat(v1ReferenceDataEntries.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
+        assertThat(v1ReferenceDataEntries.getFirst().getValues())
+                .extracting(ReferenceDataEntryValueDto::getTextValue)
                 .containsExactly("Vienna");
 
-        assertThat(v2Entries).hasSize(1);
-        assertThat(v2Entries.getFirst().getId()).isEqualTo(created.getId());
-        assertThat(v2Entries.getFirst().getComplete()).isFalse();
-        assertThat(v2Entries.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
-        assertThat(v2Entries.getFirst().getValues()).extracting(EntryValueDto::getTextValue)
+        assertThat(v2ReferenceDataEntries).hasSize(1);
+        assertThat(v2ReferenceDataEntries.getFirst().getId()).isEqualTo(created.getId());
+        assertThat(v2ReferenceDataEntries.getFirst().getComplete()).isFalse();
+        assertThat(v2ReferenceDataEntries.getFirst().getLastCompleteVersionCode()).isEqualTo(1);
+        assertThat(v2ReferenceDataEntries.getFirst().getValues())
+                .extracting(ReferenceDataEntryValueDto::getTextValue)
                 .containsExactly("Vienna", null);
     }
 
@@ -113,12 +117,12 @@ class EntryRepositoryIntegrationTest {
         var savedRdo = referenceDataObjectRepository.save(rdo);
         var optionId = savedField.getOptions().getFirst().getId();
 
-        var created = entryService.createEntry(savedRdo.getId(), version.getId(), new UpsertEntryRequest(List.of(
-                new EntryValueDto(savedField.getId()).enumOptionId(optionId))).nation(Nation.AUT));
+        var created = referenceDataEntryService.createReferenceDataEntry(savedRdo.getId(), version.getId(), new UpsertReferenceDataEntryRequest(List.of(
+                new ReferenceDataEntryValueDto(savedField.getId()).enumOptionId(optionId))).nation(Nation.AUT));
         entityManager.flush();
         entityManager.clear();
 
-        var reloaded = entryService.listEntries(savedRdo.getId(), version.getId());
+        var reloaded = referenceDataEntryService.listReferenceDataEntries(savedRdo.getId(), version.getId());
 
         assertThat(reloaded).hasSize(1);
         assertThat(reloaded.getFirst().getId()).isEqualTo(created.getId());
@@ -126,7 +130,7 @@ class EntryRepositoryIntegrationTest {
     }
 
     @Test
-    void existsByFieldId_reportsFieldsUsedByEntries() {
+    void existsByFieldId_reportsFieldsUsedByReferenceDataEntries() {
         var rdo = new ReferenceDataObject("Tariffs", "desc");
         var version = new ReferenceDataObjectVersion(rdo, 1, PublishState.DRAFT);
         rdo.getVersions().add(version);
@@ -136,11 +140,11 @@ class EntryRepositoryIntegrationTest {
         version.getFields().add(unused);
         var savedRdo = referenceDataObjectRepository.save(rdo);
 
-        entryService.createEntry(savedRdo.getId(), version.getId(), new UpsertEntryRequest(List.of(
-                new EntryValueDto(used.getId()).textValue("Vienna"))).nation(Nation.AUT));
+        referenceDataEntryService.createReferenceDataEntry(savedRdo.getId(), version.getId(), new UpsertReferenceDataEntryRequest(List.of(
+                new ReferenceDataEntryValueDto(used.getId()).textValue("Vienna"))).nation(Nation.AUT));
         entityManager.flush();
 
-        assertThat(entryValueRepository.existsByFieldId(used.getId())).isTrue();
-        assertThat(entryValueRepository.existsByFieldId(unused.getId())).isFalse();
+        assertThat(referenceDataEntryValueRepository.existsByFieldId(used.getId())).isTrue();
+        assertThat(referenceDataEntryValueRepository.existsByFieldId(unused.getId())).isFalse();
     }
 }
