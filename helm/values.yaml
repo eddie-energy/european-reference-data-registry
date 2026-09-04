@@ -1,0 +1,37 @@
+core:
+  enabled: false
+  image:
+    name: test
+    tag: test
+  existingSecret:
+    name: core-secret
+
+postgres:
+  enabled: true
+  storageSize: 10Gi
+  image:
+    name: postgres
+    version: 18.4-alpine
+  existingSecret:
+    name: postgres-secret
+  database: backend
+  owner: backend
+  storageSize: 10Gi
+
+keycloak:
+  enabled: true
+  image:
+    name: quay.io/keycloak/keycloak
+    version: 26.6.0
+  httpRelativePath: /auth
+  secret:
+    name: keycloak-secret
+
+ingress:
+  enabled: true
+  host: localhost
+  tls:
+    enabled: false
+    clusterIssuer: eddie-letsencrypt-prod
+    secretName: eddie-letsencrypt-prod
+

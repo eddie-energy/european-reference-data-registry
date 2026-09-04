@@ -1,0 +1,59 @@
+{{- if eq .Values.keycloak.enabled true }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-keycloak
+  labels:
+    {{- include "european-reference-data-registry.selectorLabels.keycloak" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+        {{- include "european-reference-data-registry.selectorLabels.keycloak" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "european-reference-data-registry.selectorLabels.keycloak" . | nindent 8 }}
+    spec:
+      containers:
+        - name: keycloak
+          image: "{{ .Values.keycloak.image.name }}:{{ .Values.keycloak.image.version }}"
+          args: [ "start", "--import-realm" ]
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secret.name }}
+                  key: admin-password
+            - name: KC_HOSTNAME
+              value: {{ include "european-reference-data-registry.keycloak.url" . | quote }}
+            - name: KC_HTTP_RELATIVE_PATH
+              value: {{ .Values.keycloak.httpRelativePath | quote }}
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+          {{- include "european-reference-data-registry.resources" .Values.keycloak.resources | nindent 10 }}
+      volumes:
+        - name: realm-config
+          configMap:
+            name: {{ .Release.Name }}-keycloak-realm
+            items:
+              - key: realm.json
+                path: realm.json
+{{- end }}
+

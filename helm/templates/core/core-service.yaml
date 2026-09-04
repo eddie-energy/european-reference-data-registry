@@ -1,0 +1,15 @@
+{{- if eq .Values.core.enabled true }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-core
+  labels:
+    {{- include "european-reference-data-registry.selectorLabels.core" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "european-reference-data-registry.selectorLabels.core" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- end }}
