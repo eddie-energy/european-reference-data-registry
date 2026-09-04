@@ -1,0 +1,27 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types:
+      - opened
+      - reopened
+      - synchronize
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Backend
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v4
+
+    - name: Build Backend
+      uses: ./.github/actions/build-spring
+      with:
+        application-name: backend

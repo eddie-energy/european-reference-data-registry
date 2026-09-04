@@ -1,0 +1,22 @@
+name: Release Backend
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  docker-push:
+    runs-on: self-hosted
+
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/docker-push
+        with:
+          version: snapshot-${{ github.sha }}
+          application-name: backend
+          push-latest: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
