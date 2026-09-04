@@ -1,10 +1,8 @@
 core:
   enabled: false
   image:
-    name: test
-    tag: test
-  existingSecret:
-    name: core-secret
+    name: ghcr.io/eddie-energy/european-reference-data-registry:snapshot-3e2eef1732d59ae0e83cb5474b5a8d70931c6960
+    tag: latest
 
 postgres:
   enabled: true

@@ -28,7 +28,7 @@ spec:
             - name: BACKEND_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.core.existingSecret.name }}
+                  name: {{ .Values.postgres.existingSecret.name }}
                   key: password
             - name: BACKEND_DB_URL
               value: "jdbc:postgresql://postgres:5432/backend"
@@ -38,10 +38,10 @@ spec:
               value: "{{ include "european-reference-data-registry.keycloak.url" . }}/realms/ceeds/protocol/openid-connect/auth"
             - name: KEYCLOAK_TOKEN_URI
               value: "{{ include "european-reference-data-registry.keycloak.url" . }}/realms/ceeds/protocol/openid-connect/token"
-            - name: KEYCLOAK_ISSUER_URI
-              value: "{{ include "european-reference-data-registry.keycloak.url" . }}/realms/ceeds"
             - name: KEYCLOAK_JWK_SET_URI
               value: "{{ include "european-reference-data-registry.keycloak.url" . }}/realms/ceeds/protocol/openid-connect/certs"
+            - name: KEYCLOAK_ISSUER_URI
+              value: "{{ include "european-reference-data-registry.keycloak.url" . }}/realms/ceeds"
           {{- include "european-reference-data-registry.resources" .Values.core.resources | nindent 10 }}
 
       {{- if .Values.imagePullSecrets }}

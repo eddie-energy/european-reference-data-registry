@@ -10,6 +10,6 @@ spec:
     {{- include "european-reference-data-registry.selectorLabels.core" . | nindent 4 }}
   ports:
     - name: http
-      port: 80
+      port: 8080
       targetPort: http
 {{- end }}
