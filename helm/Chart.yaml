@@ -1,0 +1,6 @@
+apiVersion: v2
+name: european-reference-data-registry
+description: INSIEME S3 European Reference Data Registry
+type: application
+version: 0.0.1
+appVersion: "0.0.1"
