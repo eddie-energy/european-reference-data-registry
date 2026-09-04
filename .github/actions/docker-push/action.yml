@@ -10,6 +10,10 @@ inputs:
     description: "Application name"
     required: true
 
+  image-name:
+    description: "Image name"
+    required: true
+
   github-token:
     description: "GitHub Token"
     required: true
@@ -32,7 +36,7 @@ runs:
       shell: bash
       run: |
         ./gradlew ${{ inputs.application-name }}:bootBuildImage \
-          -PdockerImage=ghcr.io/${{ github.repository_owner }}/${{ inputs.application-name }}:${{ inputs.version }}
+          -PdockerImage=ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${{ inputs.version }}
 
     - name: Login to GHCR
       shell: bash
@@ -41,12 +45,12 @@ runs:
     - name: Tag and push version
       shell: bash
       run: |
-        docker tag ${{ inputs.application-name }}:0.0.1-SNAPSHOT ghcr.io/${{ github.repository_owner }}/${{ inputs.application-name }}:${{ inputs.version }}
-        docker push ghcr.io/${{ github.repository_owner }}/${{ inputs.application-name }}:${{ inputs.version }}
+        docker tag ${{ inputs.application-name }}:0.0.1-SNAPSHOT ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${{ inputs.version }}
+        docker push ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${{ inputs.version }}
 
     - name: Tag and push latest
       if: inputs.push-latest == 'true'
       shell: bash
       run: |
-        docker tag ${{ inputs.application-name }}:0.0.1-SNAPSHOT ghcr.io/${{ github.repository_owner }}/${{ inputs.application-name }}:latest
-        docker push ghcr.io/${{ github.repository_owner }}/${{ inputs.application-name }}:latest
+        docker tag ${{ inputs.application-name }}:0.0.1-SNAPSHOT ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:latest
+        docker push ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:latest
