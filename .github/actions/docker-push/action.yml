@@ -32,12 +32,6 @@ runs:
         java-version: "21"
         distribution: "temurin"
 
-    - name: Build Container image with Spring Boot
-      shell: bash
-      run: |
-        ./gradlew ${{ inputs.application-name }}:bootBuildImage \
-          -PdockerImage=ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${{ inputs.version }}
-
     - name: Login to GHCR
       shell: bash
       run: echo "${{ inputs.github-token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
