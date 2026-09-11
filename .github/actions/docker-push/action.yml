@@ -48,7 +48,7 @@ runs:
         ./gradlew --no-daemon jib \
           -Djib.to.image=${{ inputs.image-name }} \
           -Djib.to.tags=${{ inputs.tags }} \
-          -Djib.to.auth.password=${{ inputs.github_token }}
+          -Djib.to.auth.password=${{ inputs.github-token }}
 
     - name: "Cleanup Docker login"
       shell: bash

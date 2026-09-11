@@ -69,7 +69,7 @@ jib {
         }
     }
     to {
-        image = System.getProperty("jib.to.image") ?: "ghcr.io/eddie-energy/ceeds-backend"
+        image = System.getProperty("jib.to.image") ?: "ghcr.io/eddie-energy/european-reference-data-registry"
         auth {
             username = "oauth2accesstoken"
             password = System.getProperty("jib.to.auth.password")
