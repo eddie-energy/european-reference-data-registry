@@ -46,7 +46,7 @@ runs:
         echo "TAGS: ${{ inputs.tags }}"
 
         ./gradlew --no-daemon jib \
-          -Djib.to.image=${{ inputs.image-name }} \
+          -Djib.to.image=$IMAGE_ID \
           -Djib.to.tags=${{ inputs.tags }} \
           -Djib.to.auth.password=${{ inputs.github-token }}
 
