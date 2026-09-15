@@ -18,5 +18,6 @@ jobs:
         with:
           version: snapshot-${{ github.sha }}
           application-name: backend
-          push-latest: 'true'
+          image-name: european-reference-data-registry
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          tags: snapshot-${{ github.sha }},latest

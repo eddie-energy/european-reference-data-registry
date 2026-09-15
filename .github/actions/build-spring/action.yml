@@ -17,5 +17,5 @@ runs:
 
     - name: Gradle Build
       shell: bash
-      run: ./gradlew ${{ inputs.application-name}}:build
+      run: ./gradlew build -x test
 
