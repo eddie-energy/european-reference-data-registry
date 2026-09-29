@@ -28,5 +28,5 @@ jobs:
         run: |
           helm package helm --destination /tmp/chart-dist
           chart_file=$(ls /tmp/chart-dist/european-reference-data-registry-*.tgz)
-          helm push "$chart_file" oci://ghcr.io/insieme-energy/charts
+          helm push "$chart_file" oci://ghcr.io/eddie-energy/charts
 
