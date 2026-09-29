@@ -1,0 +1,32 @@
+name: Publish Helm chart
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ helm/** ]
+  workflow_dispatch:
+
+jobs:
+  package-and-push-chart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            -u ${{ github.actor }} --password-stdin
+
+      - name: Package and push chart
+        run: |
+          helm package helm --destination /tmp/chart-dist
+          chart_file=$(ls /tmp/chart-dist/european-reference-data-registry-*.tgz)
+          helm push "$chart_file" oci://ghcr.io/insieme-energy/charts
+

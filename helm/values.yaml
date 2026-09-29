@@ -1,0 +1,35 @@
+core:
+  enabled: true
+  image:
+    name: ghcr.io/eddie-energy/european-reference-data-registry
+    tag: snapshot-b9deb7ae344aad1a63b3ab324bd9b02034a7fb6d
+
+postgres:
+  enabled: true
+  storageSize: 10Gi
+  image:
+    name: postgres
+    version: 18.4-alpine
+  existingSecret:
+    name: postgres-secret
+  database: backend
+  owner: backend
+  storageSize: 10Gi
+
+keycloak:
+  enabled: true
+  image:
+    name: quay.io/keycloak/keycloak
+    version: 26.6.0
+  httpRelativePath: /auth
+  secret:
+    name: keycloak-secret
+
+ingress:
+  enabled: true
+  host: localhost
+  tls:
+    enabled: false
+    clusterIssuer: eddie-letsencrypt-prod
+    secretName: eddie-letsencrypt-prod
+

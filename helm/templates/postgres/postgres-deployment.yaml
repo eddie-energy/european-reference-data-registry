@@ -1,0 +1,44 @@
+{{- if eq .Values.postgres.enabled true }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    {{- include "european-reference-data-registry.selectorLabels.postgres" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+        {{- include "european-reference-data-registry.selectorLabels.postgres" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "european-reference-data-registry.selectorLabels.postgres" . | nindent 8 }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.image.name }}:{{ .Values.postgres.image.version }}"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.owner | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.existingSecret.name }}
+                  key: password
+          {{- include "european-reference-data-registry.resources" .Values.postgres.resources | nindent 10 }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-postgres
+{{- end }}
