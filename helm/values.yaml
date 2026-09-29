@@ -1,8 +1,8 @@
 core:
-  enabled: false
+  enabled: true
   image:
-    name: ghcr.io/eddie-energy/european-reference-data-registry:snapshot-3e2eef1732d59ae0e83cb5474b5a8d70931c6960
-    tag: latest
+    name: ghcr.io/eddie-energy/european-reference-data-registry
+    tag: snapshot-b9deb7ae344aad1a63b3ab324bd9b02034a7fb6d
 
 postgres:
   enabled: true
