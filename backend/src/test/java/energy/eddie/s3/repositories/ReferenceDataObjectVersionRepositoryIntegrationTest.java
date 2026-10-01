@@ -2,6 +2,8 @@ package energy.eddie.s3.repositories;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import energy.eddie.s3.generated.model.ReferenceDataObjectCategory;
+import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
 import energy.eddie.s3.models.referencedata.EnumOption;
 import energy.eddie.s3.models.referencedata.Field;
@@ -27,9 +29,23 @@ class ReferenceDataObjectVersionRepositoryIntegrationTest {
     private ReferenceDataObjectVersionRepository versionRepository;
     @Autowired
     private FieldRepository fieldRepository;
+    @Autowired
+    private ReferenceDataObjectMapper mapper;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Test
+    void categoryPersistsOnReferenceDataObject() {
+        var rdo = new ReferenceDataObject("Permission Administrators", "desc");
+        rdo.setCategory(energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.ROLE);
+        var id = referenceDataObjectRepository.saveAndFlush(rdo).getId();
+        entityManager.clear();
+
+        var saved = referenceDataObjectRepository.findById(id).orElseThrow();
+        assertThat(saved.getCategory()).isEqualTo(energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.ROLE);
+        assertThat(mapper.toDetail(saved).getCategory()).isEqualTo(ReferenceDataObjectCategory.ROLE);
+    }
 
     @Test
     void findFirstByReferenceDataObjectIdOrderByVersionCodeDesc_returnsLatest() {

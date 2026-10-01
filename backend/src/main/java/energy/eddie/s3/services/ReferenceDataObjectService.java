@@ -9,6 +9,7 @@ import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
+import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
 import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
@@ -62,6 +63,10 @@ public class ReferenceDataObjectService {
     @Transactional
     public ReferenceDataObjectDetail create(CreateReferenceDataObjectRequest request) {
         var rdo = new ReferenceDataObject(request.getName(), request.getDescription());
+        if (request.getCategory() != null) {
+            rdo.setCategory(energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.valueOf(
+                    request.getCategory().name()));
+        }
         var version = new ReferenceDataObjectVersion(rdo, 1, PublishState.DRAFT);
         rdo.getVersions().add(version);
         return mapper.toDetail(referenceDataObjectRepository.save(rdo));
@@ -84,6 +89,16 @@ public class ReferenceDataObjectService {
             throw new NotFoundException("Reference data object " + id + " not found");
         }
         return detail;
+    }
+
+    @Transactional
+    public ReferenceDataObjectDetail updateCategory(UUID id, UpdateReferenceDataObjectCategoryRequest request) {
+        var rdo = findReferenceDataObject(id);
+        var category = request.getCategory();
+        rdo.setCategory(category == null
+                ? null
+                : energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.valueOf(category.name()));
+        return mapper.toDetail(rdo);
     }
 
     private static ReferenceDataObjectDetail withVisibleVersions(

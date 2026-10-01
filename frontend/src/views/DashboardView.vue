@@ -6,7 +6,8 @@ import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 import ButtonLink from '@/components/ButtonLink.vue'
 import { userRole } from '@/stores/userInfo'
 import useToast from '@/composables/useToast'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import type { components } from '@/schema'
 
 onMounted(async () => {
   const { error } = await updateReferenceDataObjects()
@@ -23,8 +24,22 @@ const visibleReferenceDataObjects = computed(() =>
       ),
 )
 
+type Category = components['schemas']['ReferenceDataObjectCategory']
+const categoryFilter = ref<Category>()
+const categoryFilters: { value: Category | undefined; label: string }[] = [
+  { value: undefined, label: 'All' },
+  { value: 'ROLE', label: 'Role' },
+  { value: 'SERVICE', label: 'Service' },
+]
+
+const filteredReferenceDataObjects = computed(() =>
+  (visibleReferenceDataObjects.value ?? []).filter(
+    (object) => !categoryFilter.value || object.category === categoryFilter.value,
+  ),
+)
+
 const carouselKey = computed(() =>
-  (visibleReferenceDataObjects.value ?? [])
+  filteredReferenceDataObjects.value
     .map(
       (object) =>
         `${object.id}:${object.versions.map((version) => `${version.versionCode}${version.publishState}`).join(',')}`,
@@ -35,7 +50,7 @@ const carouselKey = computed(() =>
 const carouselConfig = computed(() => ({
   itemsToShow: 1,
   gap: 64,
-  wrapAround: (visibleReferenceDataObjects.value?.length ?? 0) > 1,
+  wrapAround: filteredReferenceDataObjects.value.length > 3,
   breakpoints: {
     640: { itemsToShow: 2 },
     1024: { itemsToShow: 3 },
@@ -60,10 +75,23 @@ const carouselConfig = computed(() => ({
           Create new
         </ButtonLink>
       </header>
+      <div class="category-filters" role="group" aria-label="Filter by category">
+        <button
+          v-for="filter in categoryFilters"
+          :key="filter.label"
+          type="button"
+          class="filter-chip"
+          :class="{ selected: categoryFilter === filter.value }"
+          :aria-pressed="categoryFilter === filter.value"
+          @click="categoryFilter = filter.value"
+        >
+          {{ filter.label }}
+        </button>
+      </div>
       <div class="carousel-wrapper">
-        <Carousel :key="carouselKey" v-bind="carouselConfig">
+        <Carousel v-if="filteredReferenceDataObjects.length" :key="carouselKey" v-bind="carouselConfig">
           <Slide
-            v-for="referenceDataObject in visibleReferenceDataObjects"
+            v-for="referenceDataObject in filteredReferenceDataObjects"
             :key="referenceDataObject.id"
           >
             <ReferenceDataObjectCard v-bind="referenceDataObject" />
@@ -73,6 +101,7 @@ const carouselConfig = computed(() => ({
             <Pagination />
           </template>
         </Carousel>
+        <p v-else>No reference data objects in this category.</p>
       </div>
     </section>
     <section>
@@ -129,6 +158,33 @@ section h2 {
   padding-inline: var(--spacing-xxl);
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-xxl);
+}
+
+.filter-chip {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--input-border-color);
+  border-radius: var(--chip-radius);
+  background: var(--light);
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.filter-chip.selected {
+  border-color: var(--teal);
+  background: var(--teal-tint-bg);
+  color: var(--teal-tint-text);
+}
+
+.filter-chip:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
 }
 
 :deep(.carousel) {

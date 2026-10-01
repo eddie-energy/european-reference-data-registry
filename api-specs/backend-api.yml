@@ -98,6 +98,33 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /reference-data-objects/{id}/category:
+    put:
+      tags: [ ReferenceData ]
+      operationId: updateReferenceDataObjectCategory
+      summary: Set or clear a reference data object's category
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReferenceDataObjectCategoryRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceDataObjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /reference-data-objects/{id}/versions:
     post:
       tags: [ ReferenceData ]
@@ -515,6 +542,18 @@ components:
         description:
           type: string
           minLength: 1
+        category:
+          $ref: '#/components/schemas/ReferenceDataObjectCategory'
+
+    UpdateReferenceDataObjectCategoryRequest:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/ReferenceDataObjectCategory'
+
+    ReferenceDataObjectCategory:
+      type: string
+      enum: [ ROLE, SERVICE ]
 
     EnumOptionDto:
       type: object
@@ -718,6 +757,8 @@ components:
           type: string
         description:
           type: string
+        category:
+          $ref: '#/components/schemas/ReferenceDataObjectCategory'
         createdAt:
           type: string
           format: date-time

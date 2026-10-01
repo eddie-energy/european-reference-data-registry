@@ -15,6 +15,7 @@ import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
+import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
 import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
@@ -85,7 +86,10 @@ class ReferenceDataObjectServiceTest {
 
     @Test
     void create_persistsRdoWithInitialDraftVersion() {
-        var request = new CreateReferenceDataObjectRequest().name("Tariffs").description("desc");
+        var request = new CreateReferenceDataObjectRequest()
+                .name("Tariffs")
+                .description("desc")
+                .category(energy.eddie.s3.generated.model.ReferenceDataObjectCategory.SERVICE);
         when(mapper.toDetail(any())).thenReturn(new ReferenceDataObjectDetail());
         when(referenceDataObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -95,10 +99,26 @@ class ReferenceDataObjectServiceTest {
         verify(referenceDataObjectRepository).save(captor.capture());
         var saved = captor.getValue();
         assertThat(saved.getName()).isEqualTo("Tariffs");
+        assertThat(saved.getCategory()).isEqualTo(energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.SERVICE);
         assertThat(saved.getVersions()).hasSize(1);
         var version = saved.getVersions().get(0);
         assertThat(version.getVersionCode()).isEqualTo(1);
         assertThat(version.getPublishState()).isEqualTo(PublishState.DRAFT);
+    }
+
+    @Test
+    void updateCategory_setsAndClearsExistingObjectCategory() {
+        var id = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        when(referenceDataObjectRepository.findById(id)).thenReturn(Optional.of(rdo));
+        when(mapper.toDetail(rdo)).thenReturn(new ReferenceDataObjectDetail());
+
+        service.updateCategory(id, new UpdateReferenceDataObjectCategoryRequest()
+                .category(energy.eddie.s3.generated.model.ReferenceDataObjectCategory.ROLE));
+        assertThat(rdo.getCategory()).isEqualTo(energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.ROLE);
+
+        service.updateCategory(id, new UpdateReferenceDataObjectCategoryRequest());
+        assertThat(rdo.getCategory()).isNull();
     }
 
     @Test
