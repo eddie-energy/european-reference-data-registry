@@ -12,12 +12,7 @@ import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
 import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
-import energy.eddie.s3.models.referencedata.DataType;
-import energy.eddie.s3.models.referencedata.Field;
-import energy.eddie.s3.models.referencedata.Nation;
-import energy.eddie.s3.models.referencedata.PublishState;
-import energy.eddie.s3.models.referencedata.ReferenceDataObject;
-import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
+import energy.eddie.s3.models.referencedata.*;
 import energy.eddie.s3.repositories.ReferenceDataEntryRepository;
 import energy.eddie.s3.repositories.ReferenceDataEntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
@@ -64,7 +59,7 @@ public class ReferenceDataObjectService {
     public ReferenceDataObjectDetail create(CreateReferenceDataObjectRequest request) {
         var rdo = new ReferenceDataObject(request.getName(), request.getDescription());
         if (request.getCategory() != null) {
-            rdo.setCategory(energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.valueOf(
+            rdo.setCategory(ReferenceDataObjectCategory.valueOf(
                     request.getCategory().name()));
         }
         var version = new ReferenceDataObjectVersion(rdo, 1, PublishState.DRAFT);
@@ -97,7 +92,7 @@ public class ReferenceDataObjectService {
         var category = request.getCategory();
         rdo.setCategory(category == null
                 ? null
-                : energy.eddie.s3.models.referencedata.ReferenceDataObjectCategory.valueOf(category.name()));
+                : ReferenceDataObjectCategory.valueOf(category.name()));
         return mapper.toDetail(rdo);
     }
 
