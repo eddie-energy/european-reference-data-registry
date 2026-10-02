@@ -21,7 +21,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: {{ .Values.core.port }}
+              containerPort: 8080
           env:
             - name: BACKEND_DB_USERNAME
               value: "backend"
@@ -31,7 +31,7 @@ spec:
                   name: {{ .Values.postgres.existingSecret.name }}
                   key: password
             - name: BACKEND_DB_URL
-              value: "jdbc:postgresql://postgres:5432/backend"
+              value: "jdbc:postgresql://{{ .Release.Name }}-postgres:5432/backend"
             - name: KEYCLOAK_HOST
               value: {{ include "european-reference-data-registry.keycloak.url" . | quote }}
             - name: KEYCLOAK_AUTHORIZATION_URL
