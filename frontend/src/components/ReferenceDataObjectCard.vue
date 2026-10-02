@@ -10,7 +10,7 @@ import { updateReferenceDataObjects } from '@/stores/referenceDataObject'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 
-const { name, description, id, versions } =
+const { name, description, category, id, versions } =
   defineProps<components['schemas']['ReferenceDataObjectDetail']>()
 
 const { confirm } = useConfirmDialog()
@@ -74,6 +74,7 @@ const iconAccentClass = computed(() => {
       <CardIcon class="icon" />
     </div>
     <h3 class="name">{{ name }}</h3>
+    <span v-if="category" class="chip category-chip">{{ category === 'ROLE' ? 'Role' : 'Service' }}</span>
     <p>{{ description }}</p>
     <p v-if="userRole === 'operationalEntity' && latestVersion" class="version-info">
       <template v-if="hasChanges">
@@ -157,6 +158,11 @@ const iconAccentClass = computed(() => {
   font-size: 1.375rem;
   font-weight: 700;
   text-wrap: wrap;
+}
+
+.category-chip {
+  background: var(--lavender-tint-bg);
+  color: var(--lavender-tint-text);
 }
 
 p {

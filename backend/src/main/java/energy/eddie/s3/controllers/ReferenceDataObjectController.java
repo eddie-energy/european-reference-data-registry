@@ -6,8 +6,9 @@ import energy.eddie.s3.generated.model.CreateReferenceDataObjectRequest;
 import energy.eddie.s3.generated.model.FieldDto;
 import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
-import energy.eddie.s3.generated.model.ReorderFieldsRequest;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
+import energy.eddie.s3.generated.model.ReorderFieldsRequest;
+import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
 import energy.eddie.s3.services.ReferenceDataObjectService;
 import java.util.List;
 import java.util.UUID;
@@ -38,6 +39,12 @@ public class ReferenceDataObjectController implements ReferenceDataApi {
     @Override
     public ResponseEntity<ReferenceDataObjectDetail> getReferenceDataObject(UUID id) {
         return ResponseEntity.ok(service.get(id));
+    }
+
+    @Override
+    public ResponseEntity<ReferenceDataObjectDetail> updateReferenceDataObjectCategory(
+            UUID id, UpdateReferenceDataObjectCategoryRequest request) {
+        return ResponseEntity.ok(service.updateCategory(id, request));
     }
 
     @Override

@@ -6,12 +6,15 @@ import { updateReferenceDataObjects } from '@/stores/referenceDataObject'
 import ButtonLink from '@/components/ButtonLink.vue'
 import useToast from '@/composables/useToast'
 import CrossIcon from '@/assets/icons/CrossIcon.svg'
+import CategoryChips from '@/components/CategoryChips.vue'
+import type { components } from '@/schema'
 
 const router = useRouter()
 const { success } = useToast()
 
 const name = ref('')
 const description = ref('')
+const category = ref<components['schemas']['ReferenceDataObjectCategory']>()
 const errorMessage = ref('')
 const submitting = ref(false)
 
@@ -23,6 +26,7 @@ const submit = async () => {
     await createReferenceDataObject({
       name: name.value,
       description: description.value,
+      category: category.value,
     })
 
   if (!referenceDataObject) {
@@ -60,6 +64,10 @@ const submit = async () => {
         Description
         <textarea v-model="description" required></textarea>
       </label>
+      <div class="category-field">
+        <span>Category (optional)</span>
+        <CategoryChips v-model="category" :disabled="submitting" />
+      </div>
       <p v-if="errorMessage" class="error-banner">
         <CrossIcon class="error-icon" />
         {{ errorMessage }}
@@ -113,6 +121,12 @@ const submit = async () => {
 }
 
 label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.category-field {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);

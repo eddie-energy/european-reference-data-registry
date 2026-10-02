@@ -13,6 +13,7 @@ import {
   deleteVersion,
   unlinkField,
   reorderFields,
+  updateReferenceDataObjectCategory,
 } from '@/api'
 import FieldForm from '@/components/FieldForm.vue'
 import ButtonLink from '@/components/ButtonLink.vue'
@@ -21,6 +22,7 @@ import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { userRole } from '@/stores/userInfo'
 import type { components } from '@/schema'
+import CategoryChips from '@/components/CategoryChips.vue'
 
 const { id } = defineProps<{ id: components['parameters']['ReferenceDataObjectId'] }>()
 
@@ -77,6 +79,22 @@ const canDeleteDraftVersion = computed(
 )
 
 const submitting = ref(false)
+
+const setCategory = async (category: components['schemas']['ReferenceDataObjectCategory'] | undefined) => {
+  submitting.value = true
+  try {
+    const { data, error } = await updateReferenceDataObjectCategory(id, { category })
+    if (!data) {
+      danger(error?.message ?? 'Failed to update category')
+      return
+    }
+    referenceDataObject.value = data
+    await updateReferenceDataObjects()
+    success('Category updated')
+  } finally {
+    submitting.value = false
+  }
+}
 
 const startNewVersion = async () => {
   submitting.value = true
@@ -234,6 +252,14 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
 <template>
   <section class="editor">
     <h2>Edit</h2>
+    <div v-if="isOperationalEntity" class="category-field">
+      <span>Category (optional)</span>
+      <CategoryChips
+        :model-value="referenceDataObject?.category"
+        :disabled="submitting"
+        @update:model-value="setCategory"
+      />
+    </div>
     <ButtonLink
       v-if="canDeleteObject"
       component="button"
@@ -359,6 +385,12 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+}
+
+.category-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
 .empty {

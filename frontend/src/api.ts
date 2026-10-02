@@ -51,6 +51,20 @@ export async function getReferenceDataObject(
   return (await fetch()).GET('/reference-data-objects/{id}', { params: { path: { id } } })
 }
 
+export async function updateReferenceDataObjectCategory(
+  id: components['parameters']['ReferenceDataObjectId'],
+  body: components['schemas']['UpdateReferenceDataObjectCategoryRequest'],
+): Promise<{
+  data?: components['schemas']['ReferenceDataObjectDetail']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).PUT('/reference-data-objects/{id}/category', {
+    params: { path: { id } },
+    body,
+  })
+}
+
 export async function deleteReferenceDataObject(
   id: components['parameters']['ReferenceDataObjectId'],
 ): Promise<{

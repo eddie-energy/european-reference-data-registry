@@ -6,6 +6,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,6 +87,23 @@ class SecurityConfigTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Tariffs\",\"description\":\"desc\"}"))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void categoryUpdate_requiresOperationalEntity() throws Exception {
+        given(referenceDataObjectService.updateCategory(any(), any())).willReturn(new ReferenceDataObjectDetail());
+
+        mockMvc.perform(put("/api/reference-data-objects/{id}/category", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\":\"ROLE\"}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/reference-data-objects/{id}/category", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\":\"ROLE\"}"))
+                .andExpect(status().isOk());
     }
 
     @Test
