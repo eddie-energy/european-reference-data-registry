@@ -24,6 +24,9 @@ const roleLabel = computed(() => ROLE_LABELS[userRole.value])
 
     <nav>
       <RouterLink to="/"> Home </RouterLink>
+      <RouterLink v-if="userRole === 'operationalEntity'" to="/management/responsibilities">
+        Responsibilities
+      </RouterLink>
       <a :href="swaggerUrl" target="_blank">API</a>
     </nav>
 

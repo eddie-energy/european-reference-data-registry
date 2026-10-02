@@ -44,6 +44,8 @@ keycloak:
   authorization-uri: http://localhost:8081/realms/ceeds/protocol/openid-connect/auth
   token-uri: http://localhost:8081/realms/ceeds/protocol/openid-connect/token
   client: ceeds-frontend
+  directory-client-id: ceeds-directory
+  directory-client-secret: ${KEYCLOAK_DIRECTORY_CLIENT_SECRET:ceeds-directory-dev-secret}
   issuer-uri: http://localhost:8081/realms/ceeds
   jwk-set-uri: http://localhost:8081/realms/ceeds/protocol/openid-connect/certs
 

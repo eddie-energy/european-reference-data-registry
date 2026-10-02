@@ -249,3 +249,38 @@ export async function getCurrentUser(): Promise<{
 }> {
   return (await fetch()).GET('/me')
 }
+
+export async function getMyResponsibilities() {
+  return (await fetch()).GET('/me/responsibilities')
+}
+
+export async function listEligibleOrganizations() {
+  return (await fetch()).GET('/management/organizations')
+}
+
+export async function listResponsibilities(id: string) {
+  return (await fetch()).GET('/reference-data-objects/{id}/responsibilities', {
+    params: { path: { id } },
+  })
+}
+
+export async function assignResponsibility(
+  id: string,
+  body: components['schemas']['AssignResponsibilityRequest'],
+) {
+  return (await fetch()).POST('/reference-data-objects/{id}/responsibilities', {
+    params: { path: { id } },
+    body,
+  })
+}
+
+export async function removeResponsibility(
+  id: string,
+  organizationId: string,
+  nation: components['schemas']['Nation'],
+) {
+  return (await fetch()).DELETE(
+    '/reference-data-objects/{id}/responsibilities/{organizationId}/{nation}',
+    { params: { path: { id, organizationId, nation } } },
+  )
+}

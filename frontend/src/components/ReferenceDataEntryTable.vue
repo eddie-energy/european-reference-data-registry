@@ -22,7 +22,7 @@ import VersionTable from './VersionTable.vue'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { referenceDataObject } from '@/stores/referenceDataObject'
-import { userRole } from '@/stores/userInfo'
+import { maintainableNations, userRole } from '@/stores/userInfo'
 
 type ReferenceDataEntryDto = components['schemas']['ReferenceDataEntryDto']
 type FieldDto = components['schemas']['FieldDto']
@@ -180,6 +180,13 @@ const columns = computed<ColumnDef<ReferenceDataEntryDto, any>[]>(() => [
           enableSorting: false,
           cell: (ctx) => {
             const referenceDataEntry = ctx.row.original
+            if (
+              userRole.value !== 'operationalEntity' &&
+              (!referenceDataEntry.nation ||
+                !maintainableNations(id).includes(referenceDataEntry.nation))
+            ) {
+              return null
+            }
             return [
               h(
                 ButtonLink,
@@ -292,6 +299,7 @@ const table = useVueTable({
     >
       <ReferenceDataEntryForm
         :key="formKey"
+        :object-id="id"
         :fields="version.fields"
         :reference-data-entry="editing"
         :submitting

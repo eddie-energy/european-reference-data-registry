@@ -1,0 +1,9 @@
+{{- if eq .Values.keycloak.enabled true }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-directory-bootstrap
+data:
+  directory-bootstrap.sh: |
+{{ .Files.Get "files/directory-bootstrap.sh" | indent 4 }}
+{{- end }}

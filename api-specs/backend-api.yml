@@ -17,11 +17,131 @@ tags:
     description: Manage reference data entries of a reference data object
   - name: Me
     description: Information about the authenticated caller
+  - name: Responsibilities
+    description: Operational Entity responsibility management
 
 security:
   - bearerAuth: [ ]
 
 paths:
+  /management/organizations:
+    get:
+      tags: [ Responsibilities ]
+      operationId: listEligibleOrganizations
+      summary: List Keycloak NDSF organizations available for assignment
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EligibleOrganizationDto'
+        '503':
+          description: Keycloak organization directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /reference-data-objects/{id}/responsibilities:
+    get:
+      tags: [ Responsibilities ]
+      operationId: listResponsibilities
+      summary: List assignments for a reference data object
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponsibilityDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Responsibilities ]
+      operationId: assignResponsibility
+      summary: Assign an NDSF organization to maintain one nation of an object
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignResponsibilityRequest'
+      responses:
+        '201':
+          description: Assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsibilityDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Keycloak organization directory unavailable
+
+  /reference-data-objects/{id}/responsibilities/{organizationId}/{nation}:
+    delete:
+      tags: [ Responsibilities ]
+      operationId: removeResponsibility
+      summary: Remove one organization and nation assignment
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: nation
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Nation'
+      responses:
+        '204':
+          description: Removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /me/responsibilities:
+    get:
+      tags: [ Me ]
+      operationId: getMyResponsibilities
+      summary: List caller's effective object and nation maintenance permissions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyResponsibilityDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /reference-data-objects:
     get:
       tags: [ ReferenceData ]
@@ -501,7 +621,7 @@ components:
             $ref: '#/components/schemas/Role'
         ndsfNations:
           type: array
-          description: Nations whose reference data entries the caller may maintain as NDSF
+          description: Nations listed on the caller's Keycloak NDSF organizations; object assignments determine maintenance rights
           items:
             $ref: '#/components/schemas/Nation'
         organizations:
@@ -513,6 +633,54 @@ components:
     DataType:
       type: string
       enum: [ NUMBER, TEXT, DATE, ENUM ]
+
+    EligibleOrganizationDto:
+      type: object
+      required: [ id, alias, name, keycloakNations ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        alias:
+          type: string
+        name:
+          type: string
+        keycloakNations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Nation'
+
+    ResponsibilityDto:
+      type: object
+      required: [ organizationId, nation ]
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        nation:
+          $ref: '#/components/schemas/Nation'
+
+    AssignResponsibilityRequest:
+      type: object
+      required: [ organizationId, nation ]
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        nation:
+          $ref: '#/components/schemas/Nation'
+
+    MyResponsibilityDto:
+      type: object
+      required: [ referenceDataObjectId, nations ]
+      properties:
+        referenceDataObjectId:
+          type: string
+          format: uuid
+        nations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Nation'
 
     PublishState:
       type: string

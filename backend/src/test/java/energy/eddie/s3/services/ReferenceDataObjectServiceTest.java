@@ -61,6 +61,8 @@ class ReferenceDataObjectServiceTest {
     private ReferenceDataObjectMapper mapper;
     @Mock
     private CurrentUser currentUser;
+    @Mock
+    private ResponsibilityService responsibilityService;
 
     @InjectMocks
     private ReferenceDataObjectService service;
@@ -370,7 +372,7 @@ class ReferenceDataObjectServiceTest {
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
-        when(currentUser.mayMaintainFieldsFor(Nation.GER)).thenReturn(false);
+        when(responsibilityService.mayMaintain(id, Nation.GER)).thenReturn(false);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
 
         var request = new CreateFieldRequest()
@@ -807,7 +809,7 @@ class ReferenceDataObjectServiceTest {
         var rdo = rdoWithId(id);
         var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
         var savedField = fieldWithId(UUID.randomUUID());
-        when(currentUser.mayMaintainFieldsFor(Nation.AUT)).thenReturn(true);
+        when(responsibilityService.mayMaintain(id, Nation.AUT)).thenReturn(true);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
         when(fieldRepository.save(any())).thenReturn(savedField);
         when(mapper.toFieldDto(savedField)).thenReturn(new FieldDto());
@@ -827,7 +829,7 @@ class ReferenceDataObjectServiceTest {
         var versionId = UUID.randomUUID();
         var rdo = rdoWithId(id);
         var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
-        when(currentUser.mayMaintainFieldsFor(Nation.GER)).thenReturn(false);
+        when(responsibilityService.mayMaintain(id, Nation.GER)).thenReturn(false);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
 
         var request = new CreateFieldRequest()
