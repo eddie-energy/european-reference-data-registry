@@ -10,6 +10,7 @@ data:
     {
       "realm": "ceeds",
       "enabled": true,
+      "organizationsEnabled": true,
       "displayName": "CEEDS",
       "sslRequired": "none",
       "registrationAllowed": true,
@@ -39,6 +40,17 @@ data:
             "pkce.code.challenge.method": "S256",
             "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:8080/*"
           }
+        },
+        {
+          "clientId": "ceeds-directory",
+          "name": "CEEDS organization directory",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "${KEYCLOAK_DIRECTORY_CLIENT_SECRET}",
+          "standardFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": true
         }
       ],
       "users": [
@@ -52,6 +64,14 @@ data:
               "temporary": false
             }
           ]
+        },
+        {
+          "username": "service-account-ceeds-directory",
+          "enabled": true,
+          "serviceAccountClientId": "ceeds-directory",
+          "clientRoles": {
+            "realm-management": ["view-organizations"]
+          }
         }
       ],
       "registrationEmailAsUsername": false,

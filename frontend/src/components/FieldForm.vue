@@ -5,7 +5,7 @@ import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
 import useToast from '@/composables/useToast'
 import { nations } from '@/constants/nations'
-import { ndsfNations, userRole } from '@/stores/userInfo'
+import { maintainableNations, userRole } from '@/stores/userInfo'
 
 const { id, versionId } = defineProps<{
   id: components['parameters']['ReferenceDataObjectId']
@@ -32,7 +32,7 @@ const isOperationalEntity = computed(() => userRole.value === 'operationalEntity
 const nationOptions = computed(() =>
   isOperationalEntity.value
     ? nations
-    : nations.filter((option) => ndsfNations.value.includes(option.value)),
+    : nations.filter((option) => maintainableNations(id).includes(option.value)),
 )
 
 const addOption = () => {

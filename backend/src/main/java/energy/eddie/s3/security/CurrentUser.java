@@ -6,6 +6,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,20 +37,12 @@ public class CurrentUser {
                 && hasAuthority(OrganizationRolesConverter.NDSF_NATION_AUTHORITY_PREFIX + nation.name());
     }
 
-    public boolean mayMaintainReferenceDataEntriesFor(@Nullable Nation nation) {
-        return isOperationalEntity() || isNdsfFor(nation);
-    }
-
     public boolean isNdsf() {
         return hasAuthority(CeedsRole.NDSF.authority());
     }
 
     public boolean maySeeDrafts() {
         return isOperationalEntity() || isNdsf();
-    }
-
-    public boolean mayMaintainFieldsFor(@Nullable Nation nation) {
-        return isOperationalEntity() || isNdsfFor(nation);
     }
 
     public Set<Nation> ndsfNations() {
@@ -65,6 +58,16 @@ public class CurrentUser {
                         .sorted()
                         .toList())
                 .orElseGet(List::of);
+    }
+
+    public Set<UUID> ndsfOrganizationIds() {
+        return token()
+                .map(token -> OrganizationClaim.read(token.getToken()).stream()
+                        .filter(membership -> membership.roles().contains(CeedsRole.NDSF))
+                        .map(OrganizationMembership::id)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toSet()))
+                .orElseGet(Set::of);
     }
 
     public String username() {

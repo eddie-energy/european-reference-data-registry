@@ -3,14 +3,16 @@ import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
 import { nations } from '@/constants/nations'
-import { ndsfNations, userRole } from '@/stores/userInfo'
+import { maintainableNations, userRole } from '@/stores/userInfo'
 
 const {
   fields,
+  objectId,
   referenceDataEntry,
   submitting = false,
 } = defineProps<{
   fields: components['schemas']['FieldDto'][]
+  objectId: string
   referenceDataEntry?: components['schemas']['ReferenceDataEntryDto']
   submitting?: boolean
 }>()
@@ -34,7 +36,7 @@ const mayOmitNation = computed(() => isOperationalEntity.value && !referenceData
 const nationOptions = computed(() =>
   isOperationalEntity.value
     ? nations
-    : nations.filter((option) => ndsfNations.value.includes(option.value)),
+    : nations.filter((option) => maintainableNations(objectId).includes(option.value)),
 )
 
 const visibleFields = computed(() =>

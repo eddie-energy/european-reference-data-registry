@@ -1,0 +1,42 @@
+{{- if eq .Values.keycloak.enabled true }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-directory-bootstrap
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bootstrap
+          image: "{{ .Values.keycloak.image.name }}:{{ .Values.keycloak.image.version }}"
+          command: [ "/bin/bash", "/opt/keycloak/bootstrap/directory-bootstrap.sh" ]
+          env:
+            - name: KEYCLOAK_SERVER
+              value: "http://{{ .Release.Name }}-keycloak{{ .Values.keycloak.httpRelativePath }}"
+            - name: KEYCLOAK_REALM
+              value: ceeds
+            - name: KEYCLOAK_ADMIN
+              value: admin
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secret.name }}
+                  key: admin-password
+            - name: KEYCLOAK_DIRECTORY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secret.name }}
+                  key: directory-client-secret
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /opt/keycloak/bootstrap
+      volumes:
+        - name: bootstrap
+          configMap:
+            name: {{ .Release.Name }}-directory-bootstrap
+{{- end }}

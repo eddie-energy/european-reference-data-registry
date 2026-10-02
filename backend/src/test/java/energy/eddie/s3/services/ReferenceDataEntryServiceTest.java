@@ -46,6 +46,8 @@ class ReferenceDataEntryServiceTest {
     private ReferenceDataEntryRepository referenceDataEntryRepository;
     @Mock
     private CurrentUser currentUser;
+    @Mock
+    private ResponsibilityService responsibilityService;
 
     @InjectMocks
     private ReferenceDataEntryService service;
@@ -53,7 +55,7 @@ class ReferenceDataEntryServiceTest {
     @BeforeEach
     void grantOperationalEntity() {
         lenient().when(currentUser.maySeeDrafts()).thenReturn(true);
-        lenient().when(currentUser.mayMaintainReferenceDataEntriesFor(any())).thenReturn(true);
+        lenient().when(responsibilityService.mayMaintain(any(), any())).thenReturn(true);
     }
 
     private static final UUID OBJECT_ID = UUID.randomUUID();
@@ -131,7 +133,7 @@ class ReferenceDataEntryServiceTest {
 
     @Test
     void createReferenceDataEntry_asNdsfOfAnotherNation_throwsForbidden() {
-        when(currentUser.mayMaintainReferenceDataEntriesFor(energy.eddie.s3.models.referencedata.Nation.GER))
+        when(responsibilityService.mayMaintain(OBJECT_ID, energy.eddie.s3.models.referencedata.Nation.GER))
                 .thenReturn(false);
         var rdo = rdo();
         mockVersion(publishedVersion(rdo));
@@ -143,7 +145,7 @@ class ReferenceDataEntryServiceTest {
 
     @Test
     void createReferenceDataEntry_asNdsfOfThatNation_isAllowed() {
-        when(currentUser.mayMaintainReferenceDataEntriesFor(energy.eddie.s3.models.referencedata.Nation.AUT))
+        when(responsibilityService.mayMaintain(OBJECT_ID, energy.eddie.s3.models.referencedata.Nation.AUT))
                 .thenReturn(true);
         var rdo = rdo();
         mockVersion(publishedVersion(rdo));

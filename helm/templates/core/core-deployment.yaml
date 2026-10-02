@@ -34,6 +34,11 @@ spec:
               value: "jdbc:postgresql://postgres:5432/backend"
             - name: KEYCLOAK_HOST
               value: {{ include "european-reference-data-registry.keycloak.url" . | quote }}
+            - name: KEYCLOAK_DIRECTORY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secret.name }}
+                  key: directory-client-secret
             - name: KEYCLOAK_AUTHORIZATION_URL
               value: "{{ include "european-reference-data-registry.keycloak.url" . }}/realms/ceeds/protocol/openid-connect/auth"
             - name: KEYCLOAK_TOKEN_URI
@@ -49,4 +54,3 @@ spec:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
 {{- end }}
-

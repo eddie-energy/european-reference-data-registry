@@ -284,6 +284,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
             <th v-for="(field, index) in draftVersion.fields" :key="field.id">
               <div class="field-header">
                 <ButtonLink
+                  v-if="isOperationalEntity"
                   component="button"
                   buttonStyle="tertiary"
                   size="compact"
@@ -304,6 +305,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
                   {{ field.dataType }}
                 </span>
                 <ButtonLink
+                  v-if="isOperationalEntity"
                   component="button"
                   buttonStyle="tertiary"
                   size="compact"

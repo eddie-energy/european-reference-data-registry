@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -27,13 +28,14 @@ class OrganizationClaimTest {
 
     @Test
     void objectClaimWithIdAndAttributes_yieldsRoleAndNations() {
+        var organizationId = UUID.randomUUID();
         var jwt = jwtWith(Map.of(
                 "fhooe",
-                Map.of("id", "org-uuid", "ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("AUT", "GER"))));
+                Map.of("id", organizationId.toString(), "ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("AUT", "GER"))));
 
         assertThat(OrganizationClaim.read(jwt))
                 .containsExactly(
-                        new OrganizationMembership("fhooe", Set.of(CeedsRole.NDSF), Set.of(Nation.AUT, Nation.GER)));
+                        new OrganizationMembership("fhooe", organizationId, Set.of(CeedsRole.NDSF), Set.of(Nation.AUT, Nation.GER)));
     }
 
     @Test

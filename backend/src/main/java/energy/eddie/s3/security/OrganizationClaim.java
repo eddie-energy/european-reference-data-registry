@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -49,7 +50,15 @@ public final class OrganizationClaim {
                 nation(value).ifPresent(nations::add);
             }
         }
-        return new OrganizationMembership(alias, roles, nations);
+        UUID id = null;
+        if (map.get("id") instanceof String rawId) {
+            try {
+                id = UUID.fromString(rawId);
+            } catch (IllegalArgumentException ignored) {
+                id = null;
+            }
+        }
+        return new OrganizationMembership(alias, id, roles, nations);
     }
 
     private static List<String> values(@Nullable Object attribute) {

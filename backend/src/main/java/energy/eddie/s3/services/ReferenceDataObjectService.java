@@ -37,6 +37,7 @@ public class ReferenceDataObjectService {
     private final ReferenceDataEntryValueRepository referenceDataEntryValueRepository;
     private final ReferenceDataObjectMapper mapper;
     private final CurrentUser currentUser;
+    private final ResponsibilityService responsibilityService;
 
     public ReferenceDataObjectService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
@@ -45,7 +46,8 @@ public class ReferenceDataObjectService {
             ReferenceDataEntryRepository referenceDataEntryRepository,
             ReferenceDataEntryValueRepository referenceDataEntryValueRepository,
             ReferenceDataObjectMapper mapper,
-            CurrentUser currentUser) {
+            CurrentUser currentUser,
+            ResponsibilityService responsibilityService) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
         this.fieldRepository = fieldRepository;
@@ -53,6 +55,7 @@ public class ReferenceDataObjectService {
         this.referenceDataEntryValueRepository = referenceDataEntryValueRepository;
         this.mapper = mapper;
         this.currentUser = currentUser;
+        this.responsibilityService = responsibilityService;
     }
 
     @Transactional
@@ -141,7 +144,7 @@ public class ReferenceDataObjectService {
     @Transactional
     public FieldDto createField(UUID id, UUID versionId, CreateFieldRequest request) {
         var version = findVersion(id, versionId);
-        requireFieldMaintainer(toNation(request.getNation()));
+        requireFieldMaintainer(id, toNation(request.getNation()));
         if (version.getPublishState() == PublishState.PUBLISHED) {
             throw new ConflictException("Cannot add fields to a published version");
         }
@@ -195,15 +198,15 @@ public class ReferenceDataObjectService {
                 request.getOptions());
     }
 
-    private void requireFieldMaintainer(@Nullable Nation nation) {
+    private void requireFieldMaintainer(UUID objectId, @Nullable Nation nation) {
         if (currentUser.isOperationalEntity()) {
             return;
         }
         if (nation == null) {
             throw new ForbiddenException("Only an operational entity can create fields shared by all nations");
         }
-        if (!currentUser.mayMaintainFieldsFor(nation)) {
-            throw new ForbiddenException("You are not an NDSF for nation " + nation);
+        if (!responsibilityService.mayMaintain(objectId, nation)) {
+            throw new ForbiddenException("You cannot maintain fields for this object and nation " + nation);
         }
     }
 
