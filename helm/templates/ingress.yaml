@@ -29,7 +29,7 @@ spec:
               service:
                 name: {{ .Release.Name }}-core
                 port:
-                  number: 80
+                  number: 8080
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
