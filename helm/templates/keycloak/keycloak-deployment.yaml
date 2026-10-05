@@ -34,6 +34,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.keycloak.secret.name }}
                   key: admin-password
+            - name: KEYCLOAK_DIRECTORY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secret.name }}
+                  key: directory-client-secret
             - name: KC_HOSTNAME
               value: {{ include "european-reference-data-registry.keycloak.url" . | quote }}
             - name: KC_HTTP_RELATIVE_PATH
@@ -56,4 +61,3 @@ spec:
               - key: realm.json
                 path: realm.json
 {{- end }}
-

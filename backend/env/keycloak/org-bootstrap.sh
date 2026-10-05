@@ -4,7 +4,6 @@ set -euo pipefail
 KCADM=/opt/keycloak/bin/kcadm.sh
 SERVER=${KEYCLOAK_SERVER:-http://keycloak:8080}
 REALM=${KEYCLOAK_REALM:-ceeds}
-CLIENT_ID=${KEYCLOAK_CLIENT:-ceeds-frontend}
 ADMIN_USER=${KEYCLOAK_ADMIN:-admin}
 ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
 
@@ -69,21 +68,6 @@ $KCADM update "users/profile" -r "$REALM" -f - <<'PROFILE'
 }
 PROFILE
 
-client_uuid=$($KCADM get clients -r "$REALM" -q "clientId=$CLIENT_ID" --fields id | json_field id)
-scope_uuid=$($KCADM get client-scopes -r "$REALM" --fields id,name \
-  | tr -d '\n ' | sed 's/},{/}\n{/g' | grep '"name":"organization"' | json_field id)
-
-echo "Making the organization client scope a default scope of $CLIENT_ID"
-$KCADM delete "clients/$client_uuid/optional-client-scopes/$scope_uuid" -r "$REALM" 2>/dev/null || true
-$KCADM update "clients/$client_uuid/default-client-scopes/$scope_uuid" -r "$REALM"
-
-echo "Adding organization id and attributes to the organization claim"
-mapper_uuid=$($KCADM get "client-scopes/$scope_uuid/protocol-mappers/models" -r "$REALM" --fields id,protocolMapper \
-  | tr -d '\n ' | sed 's/},{/}\n{/g' | grep '"protocolMapper":"oidc-organization-membership-mapper"' | json_field id)
-$KCADM update "client-scopes/$scope_uuid/protocol-mappers/models/$mapper_uuid" -r "$REALM" \
-  -s 'config."addOrganizationId"=true' \
-  -s 'config."addOrganizationAttributes"=true'
-
 for entry in "${ORGANIZATIONS[@]}"; do
   IFS='|' read -r alias name domain roles nations <<< "$entry"
   org_uuid=$($KCADM get organizations -r "$REALM" --fields id,alias \
@@ -134,4 +118,5 @@ for entry in "${MEMBERSHIPS[@]}"; do
   fi
 done
 
+/bin/bash /opt/keycloak/bootstrap/directory-bootstrap.sh
 echo "Keycloak organization bootstrap done."

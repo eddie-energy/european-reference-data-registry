@@ -32,16 +32,19 @@ public class ReferenceDataEntryService {
     private final ReferenceDataObjectVersionRepository versionRepository;
     private final ReferenceDataEntryRepository referenceDataEntryRepository;
     private final CurrentUser currentUser;
+    private final ResponsibilityService responsibilityService;
 
     public ReferenceDataEntryService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
             ReferenceDataObjectVersionRepository versionRepository,
             ReferenceDataEntryRepository referenceDataEntryRepository,
-            CurrentUser currentUser) {
+            CurrentUser currentUser,
+            ResponsibilityService responsibilityService) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
         this.versionRepository = versionRepository;
         this.referenceDataEntryRepository = referenceDataEntryRepository;
         this.currentUser = currentUser;
+        this.responsibilityService = responsibilityService;
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +61,7 @@ public class ReferenceDataEntryService {
             UUID id, UUID versionId, UpsertReferenceDataEntryRequest request) {
         var version = findVersion(id, versionId);
         var nation = toNation(request.getNation());
-        requireMaintainer(nation);
+        requireMaintainer(id, nation);
         var referenceDataEntry = new ReferenceDataEntry(version.getReferenceDataObject(), nation);
         applyValues(referenceDataEntry, version, request);
         var saved = referenceDataEntryRepository.save(referenceDataEntry);
@@ -71,8 +74,8 @@ public class ReferenceDataEntryService {
         var version = findVersion(id, versionId);
         var referenceDataEntry = findReferenceDataEntry(id, referenceDataEntryId);
         var nation = toNation(request.getNation());
-        requireMaintainer(referenceDataEntry.getNation());
-        requireMaintainer(nation);
+        requireMaintainer(id, referenceDataEntry.getNation());
+        requireMaintainer(id, nation);
         referenceDataEntry.setNation(nation);
         applyValues(referenceDataEntry, version, request);
         referenceDataEntry.touch();
@@ -83,13 +86,13 @@ public class ReferenceDataEntryService {
     @Transactional
     public void deleteReferenceDataEntry(UUID id, UUID referenceDataEntryId) {
         var referenceDataEntry = findReferenceDataEntry(id, referenceDataEntryId);
-        requireMaintainer(referenceDataEntry.getNation());
+        requireMaintainer(id, referenceDataEntry.getNation());
         referenceDataEntryRepository.delete(referenceDataEntry);
     }
 
-    private void requireMaintainer(@Nullable Nation nation) {
-        if (!currentUser.mayMaintainReferenceDataEntriesFor(nation)) {
-            throw new ForbiddenException("You are not an NDSF for nation " + nation);
+    private void requireMaintainer(UUID objectId, @Nullable Nation nation) {
+        if (!responsibilityService.mayMaintain(objectId, nation)) {
+            throw new ForbiddenException("You cannot maintain entries for this object and nation " + nation);
         }
     }
 

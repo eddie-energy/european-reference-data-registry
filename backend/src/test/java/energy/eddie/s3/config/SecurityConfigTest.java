@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import energy.eddie.s3.controllers.ReferenceDataEntryController;
 import energy.eddie.s3.controllers.ReferenceDataObjectController;
+import energy.eddie.s3.controllers.ResponsibilitiesController;
 import energy.eddie.s3.controllers.UiController;
 import energy.eddie.s3.services.ReferenceDataEntryService;
 import energy.eddie.s3.generated.model.ReferenceDataEntryDto;
@@ -20,6 +21,8 @@ import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.security.CeedsRole;
 import energy.eddie.s3.security.OrganizationRolesConverter;
 import energy.eddie.s3.services.ReferenceDataObjectService;
+import energy.eddie.s3.services.ResponsibilityManagementService;
+import energy.eddie.s3.services.KeycloakOrganizationDirectory;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -32,7 +35,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(controllers = {ReferenceDataObjectController.class, ReferenceDataEntryController.class, UiController.class})
+@WebMvcTest(controllers = {ReferenceDataObjectController.class, ReferenceDataEntryController.class, ResponsibilitiesController.class, UiController.class})
 @Import({SecurityConfig.class, CorsConfig.class, OrganizationRolesConverter.class})
 class SecurityConfigTest {
 
@@ -46,6 +49,12 @@ class SecurityConfigTest {
 
     @MockitoBean
     private ReferenceDataEntryService referenceDataEntryService;
+
+    @MockitoBean
+    private ResponsibilityManagementService responsibilityManagementService;
+
+    @MockitoBean
+    private KeycloakOrganizationDirectory keycloakOrganizationDirectory;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -176,6 +185,26 @@ class SecurityConfigTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Tariffs\",\"description\":\"desc\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void responsibilityReadAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(get("/api/reference-data-objects/{id}/responsibilities", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority()))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void responsibilityReadAsOperationalEntity_isAllowed() throws Exception {
+        mockMvc.perform(get("/api/reference-data-objects/{id}/responsibilities", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority()))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void organizationDirectoryWithoutToken_isUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/management/organizations"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
