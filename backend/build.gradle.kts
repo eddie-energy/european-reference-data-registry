@@ -15,6 +15,8 @@ plugins {
     alias(libs.plugins.google.jib)
 }
 
+extra["testcontainers.version"] = libs.versions.testcontainers.get()
+
 group = "energy.eddie.s3"
 version = "0.0.1-SNAPSHOT"
 
@@ -45,6 +47,8 @@ dependencies {
     runtimeOnly(libs.postgresql)
 
     testImplementation(libs.bundles.spring.test.impl)
+    testImplementation(libs.spring.boot.testcontainers)
+    testImplementation(libs.testcontainers.postgresql)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 }
@@ -103,15 +107,20 @@ tasks.named<Test>("test") {
     testLogging.events("passed")
 }
 
-tasks.register<Test>("integrationTest") {
-    description = "Runs integration tests (requires a running database)."
+val integrationTest = tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests with Testcontainers (requires Docker)."
     group = "verification"
+    shouldRunAfter(tasks.test)
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform {
         filter.includeTestsMatching("*IntegrationTest")
     }
     testLogging.events("passed")
+}
+
+tasks.check {
+    dependsOn(integrationTest)
 }
 
 tasks.jacocoTestReport {
