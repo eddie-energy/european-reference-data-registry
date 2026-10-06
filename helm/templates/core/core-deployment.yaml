@@ -32,6 +32,8 @@ spec:
                   key: password
             - name: BACKEND_DB_URL
               value: "jdbc:postgresql://{{ .Release.Name }}-postgres:5432/backend"
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              value: {{ include "european-reference-data-registry.keycloak.url" . | quote }}/realms/ceeds 
             - name: KEYCLOAK_HOST
               value: {{ include "european-reference-data-registry.keycloak.url" . | quote }}
             - name: KEYCLOAK_AUTHORIZATION_URL
