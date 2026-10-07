@@ -47,7 +47,7 @@ data:
           "enabled": true,
           "protocol": "openid-connect",
           "publicClient": false,
-          "secret": "${KEYCLOAK_DIRECTORY_CLIENT_SECRET}",
+          "secret": "{{ .Values.keycloak.directoryClientSecret }}",
           "standardFlowEnabled": false,
           "directAccessGrantsEnabled": false,
           "serviceAccountsEnabled": true
