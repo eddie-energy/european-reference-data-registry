@@ -62,6 +62,13 @@ $KCADM update "users/profile" -r "$REALM" -f - <<'PROFILE'
       "validations": { "email": {}, "length": { "max": 255 } },
       "permissions": { "view": [ "admin" ], "edit": [ "admin" ] },
       "multivalued": false
+    },
+    {
+      "name": "ceeds_country",
+      "displayName": "Country",
+      "validations": { "options": { "options": [ "AUT", "FRA", "ESP", "GER" ] } },
+      "permissions": { "view": [ "admin" ], "edit": [ "admin" ] },
+      "multivalued": false
     }
   ],
   "groups": []

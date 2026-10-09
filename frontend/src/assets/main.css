@@ -1,4 +1,6 @@
 :root {
+  --banner-height: 2rem;
+
   /* Spacings */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -58,6 +60,10 @@
   --toast-succes: #238739;
   --toast-info: var(--turquiese);
   --toast-neutral: var(--dark);
+}
+
+body {
+  margin: 0;
 }
 
 svg {
