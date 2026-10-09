@@ -17,5 +17,5 @@ runs:
 
     - name: Gradle Build
       shell: bash
-      run: ./gradlew build -x test
+      run: ./gradlew build
 
