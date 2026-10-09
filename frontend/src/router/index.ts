@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import ReferenceDataObjectView from '@/views/ReferenceDataObjectView.vue'
 import CreateReferenceDataObjectView from '@/views/CreateReferenceDataObjectView.vue'
-import ResponsibilityManagementView from '@/views/ResponsibilityManagementView.vue'
+import UserManagementView from '@/views/UserManagementView.vue'
 import { userRole } from '@/stores/userInfo'
 
 const router = createRouter({
@@ -14,9 +14,9 @@ const router = createRouter({
       component: DashboardView,
     },
     {
-      path: '/management/responsibilities',
-      name: 'responsibility-management',
-      component: ResponsibilityManagementView,
+      path: '/management/users',
+      name: 'user-management',
+      component: UserManagementView,
       beforeEnter: () => {
         if (userRole.value !== 'operationalEntity') {
           return { name: 'dashboard' }

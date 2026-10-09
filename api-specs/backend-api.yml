@@ -19,6 +19,10 @@ tags:
     description: Information about the authenticated caller
   - name: Responsibilities
     description: Operational Entity responsibility management
+  - name: UserManagement
+    description: Operational Entity management of Keycloak users
+  - name: OrganizationManagement
+    description: Operational Entity management of Keycloak organizations
 
 security:
   - bearerAuth: [ ]
@@ -44,6 +48,170 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [ OrganizationManagement ]
+      operationId: createOrganization
+      summary: Create a Keycloak organization with a CEEDS role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedOrganizationDto'
+        '503':
+          description: Keycloak directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /management/organizations/{organizationId}:
+    put:
+      tags: [ OrganizationManagement ]
+      operationId: updateOrganization
+      summary: Change an organization's role and nations
+      description: Rejected with 403 for protected organizations
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrganizationRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedOrganizationDto'
+        '503':
+          description: Keycloak directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /management/all-organizations:
+    get:
+      tags: [ OrganizationManagement ]
+      operationId: listAllOrganizations
+      summary: List all enabled Keycloak organizations available for user membership
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagedOrganizationDto'
+        '503':
+          description: Keycloak directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /management/users:
+    get:
+      tags: [ UserManagement ]
+      operationId: listManagementUsers
+      summary: List all Keycloak users with country, organizations and responsibilities
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagementUserDto'
+        '503':
+          description: Keycloak directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [ UserManagement ]
+      operationId: createManagementUser
+      summary: Create a user with a temporary password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateManagementUserRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementUserDto'
+        '503':
+          description: Keycloak directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /management/users/{userId}:
+    put:
+      tags: [ UserManagement ]
+      operationId: updateManagementUser
+      summary: Change a user's country and organization memberships
+      description: Rejected with 403 for protected accounts
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateManagementUserRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementUserDto'
+        '503':
+          description: Keycloak directory unavailable
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /reference-data-objects/{id}/responsibilities:
     get:
@@ -649,6 +817,142 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Nation'
+
+    OrganizationRefDto:
+      type: object
+      required: [ id, alias, name ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        alias:
+          type: string
+        name:
+          type: string
+
+    OrganizationRole:
+      type: string
+      enum: [ NDSF, OPERATIONAL_ENTITY ]
+
+    CreateOrganizationRequest:
+      type: object
+      required: [ name, role ]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        role:
+          $ref: '#/components/schemas/OrganizationRole'
+        nations:
+          type: array
+          description: Only used for the NDSF role
+          items:
+            $ref: '#/components/schemas/Nation'
+
+    OrganizationResponsibilityDto:
+      type: object
+      required: [ referenceDataObjectId, nation ]
+      properties:
+        referenceDataObjectId:
+          type: string
+          format: uuid
+        nation:
+          $ref: '#/components/schemas/Nation'
+
+    ManagedOrganizationDto:
+      type: object
+      required: [ id, alias, name, editable, nations, responsibilities ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        alias:
+          type: string
+        name:
+          type: string
+        editable:
+          type: boolean
+          description: False for protected organizations such as the seeded Operational Entity
+        role:
+          allOf:
+            - $ref: '#/components/schemas/OrganizationRole'
+          nullable: true
+        nations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Nation'
+        responsibilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationResponsibilityDto'
+
+    UpdateOrganizationRequest:
+      type: object
+      required: [ role ]
+      properties:
+        role:
+          $ref: '#/components/schemas/OrganizationRole'
+        nations:
+          type: array
+          description: Only used for the NDSF role
+          items:
+            $ref: '#/components/schemas/Nation'
+
+    ManagementUserDto:
+      type: object
+      required: [ id, username, editable ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        editable:
+          type: boolean
+          description: False for protected accounts such as the seeded admin user
+        country:
+          allOf:
+            - $ref: '#/components/schemas/Nation'
+          nullable: true
+        organization:
+          allOf:
+            - $ref: '#/components/schemas/OrganizationRefDto'
+          nullable: true
+
+    CreateManagementUserRequest:
+      type: object
+      required: [ username, temporaryPassword ]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 255
+        temporaryPassword:
+          type: string
+          format: password
+          minLength: 8
+          writeOnly: true
+        country:
+          allOf:
+            - $ref: '#/components/schemas/Nation'
+          nullable: true
+        organizationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    UpdateManagementUserRequest:
+      type: object
+      properties:
+        country:
+          allOf:
+            - $ref: '#/components/schemas/Nation'
+          nullable: true
+        organizationId:
+          type: string
+          format: uuid
+          nullable: true
 
     ResponsibilityDto:
       type: object

@@ -43,8 +43,8 @@ class KeycloakOrganizationDirectoryTest {
                         + "\"attributes\":{\"ceeds_role\":[\"NDSF\"],\"ceeds_nations\":[\"GER\"]}}"));
         server.start();
         var base = "http://127.0.0.1:" + server.getAddress().getPort();
-        var directory = new KeycloakOrganizationDirectory(
-                new ObjectMapper(), base, "ceeds", base + "/token", "ceeds-directory", "secret");
+        var directory = new KeycloakOrganizationDirectory(new KeycloakAdminClient(
+                new ObjectMapper(), base, "ceeds", base + "/token", "ceeds-directory", "secret"));
 
         assertThat(directory.list()).singleElement().satisfies(organization -> {
             assertThat(organization.getId()).isEqualTo(id);
@@ -55,8 +55,8 @@ class KeycloakOrganizationDirectoryTest {
 
     @Test
     void missingCredentialReturnsServiceUnavailable() {
-        var directory = new KeycloakOrganizationDirectory(
-                new ObjectMapper(), "http://localhost", "ceeds", "http://localhost/token", "ceeds-directory", "");
+        var directory = new KeycloakOrganizationDirectory(new KeycloakAdminClient(
+                new ObjectMapper(), "http://localhost", "ceeds", "http://localhost/token", "ceeds-directory", ""));
 
         assertThatThrownBy(directory::list)
                 .isInstanceOf(ResponseStatusException.class)

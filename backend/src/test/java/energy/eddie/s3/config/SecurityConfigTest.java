@@ -14,6 +14,12 @@ import energy.eddie.s3.controllers.ReferenceDataEntryController;
 import energy.eddie.s3.controllers.ReferenceDataObjectController;
 import energy.eddie.s3.controllers.ResponsibilitiesController;
 import energy.eddie.s3.controllers.UiController;
+import energy.eddie.s3.controllers.OrganizationManagementController;
+import energy.eddie.s3.controllers.UserManagementController;
+import energy.eddie.s3.services.OrganizationManagementService;
+import energy.eddie.s3.generated.model.ManagementUserDto;
+import energy.eddie.s3.generated.model.ManagedOrganizationDto;
+import energy.eddie.s3.services.UserManagementService;
 import energy.eddie.s3.services.ReferenceDataEntryService;
 import energy.eddie.s3.generated.model.ReferenceDataEntryDto;
 import energy.eddie.s3.generated.model.FieldDto;
@@ -35,11 +41,13 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(controllers = {ReferenceDataObjectController.class, ReferenceDataEntryController.class, ResponsibilitiesController.class, UiController.class})
+@WebMvcTest(controllers = {ReferenceDataObjectController.class, ReferenceDataEntryController.class, ResponsibilitiesController.class, UserManagementController.class, OrganizationManagementController.class, UiController.class})
 @Import({SecurityConfig.class, CorsConfig.class, OrganizationRolesConverter.class})
 class SecurityConfigTest {
 
     private static final UUID ID = UUID.randomUUID();
+    private static final String CREATE_USER_BODY =
+            "{\"username\":\"new.user\",\"temporaryPassword\":\"s3cret-pass\"}";
 
     @Autowired
     private MockMvc mockMvc;
@@ -55,6 +63,12 @@ class SecurityConfigTest {
 
     @MockitoBean
     private KeycloakOrganizationDirectory keycloakOrganizationDirectory;
+
+    @MockitoBean
+    private UserManagementService userManagementService;
+
+    @MockitoBean
+    private OrganizationManagementService organizationManagementService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -199,6 +213,100 @@ class SecurityConfigTest {
         mockMvc.perform(get("/api/reference-data-objects/{id}/responsibilities", ID)
                         .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority()))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void userListAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(get("/api/management/users")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority()))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void userListAsOperationalEntity_isAllowed() throws Exception {
+        mockMvc.perform(get("/api/management/users")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority()))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void userCreateAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(post("/api/management/users")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_USER_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void userCreateAsOperationalEntity_isCreated() throws Exception {
+        given(userManagementService.create(any())).willReturn(new ManagementUserDto());
+
+        mockMvc.perform(post("/api/management/users")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_USER_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void userCreateWithoutToken_isUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/management/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_USER_BODY))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void organizationCreateAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(post("/api/management/organizations")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Agency\",\"role\":\"NDSF\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void organizationCreateAsOperationalEntity_isCreated() throws Exception {
+        given(organizationManagementService.create(any())).willReturn(new ManagedOrganizationDto());
+
+        mockMvc.perform(post("/api/management/organizations")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Agency\",\"role\":\"NDSF\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void organizationUpdateAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(put("/api/management/organizations/{id}", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"NDSF\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void organizationUpdateAsOperationalEntity_isAllowed() throws Exception {
+        given(organizationManagementService.update(any(), any())).willReturn(new ManagedOrganizationDto());
+
+        mockMvc.perform(put("/api/management/organizations/{id}", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"NDSF\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void organizationListAsNdsf_isForbidden() throws Exception {
+        mockMvc.perform(get("/api/management/all-organizations")
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.NDSF.authority()))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void userListWithoutToken_isUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/management/users")).andExpect(status().isUnauthorized());
     }
 
     @Test

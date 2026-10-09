@@ -24,8 +24,8 @@ const roleLabel = computed(() => ROLE_LABELS[userRole.value])
 
     <nav>
       <RouterLink to="/"> Home </RouterLink>
-      <RouterLink v-if="userRole === 'operationalEntity'" to="/management/responsibilities">
-        Responsibilities
+      <RouterLink v-if="userRole === 'operationalEntity'" to="/management/users">
+        User Management
       </RouterLink>
       <a :href="swaggerUrl" target="_blank">API</a>
     </nav>
@@ -51,7 +51,7 @@ const roleLabel = computed(() => ROLE_LABELS[userRole.value])
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--banner-height));
   width: 15rem;
   padding: var(--spacing-xlg) var(--spacing-lg);
   background-color: var(--light);

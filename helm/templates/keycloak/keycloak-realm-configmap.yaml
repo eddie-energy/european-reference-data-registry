@@ -70,7 +70,7 @@ data:
           "enabled": true,
           "serviceAccountClientId": "ceeds-directory",
           "clientRoles": {
-            "realm-management": ["view-organizations"]
+            "realm-management": ["view-organizations", "manage-organizations", "view-users", "manage-users"]
           }
         }
       ],

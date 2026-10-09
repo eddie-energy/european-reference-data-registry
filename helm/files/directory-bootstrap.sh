@@ -49,5 +49,7 @@ else
 fi
 
 service_user_id=$($KCADM get "clients/$client_uuid/service-account-user" -r "$REALM" | json_field id)
-$KCADM add-roles -r "$REALM" --uid "$service_user_id" \
-  --cclientid realm-management --rolename view-organizations
+for role in view-organizations manage-organizations view-users manage-users; do
+  $KCADM add-roles -r "$REALM" --uid "$service_user_id" \
+    --cclientid realm-management --rolename "$role"
+done
