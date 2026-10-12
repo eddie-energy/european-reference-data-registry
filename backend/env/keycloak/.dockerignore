@@ -1,1 +1,3 @@
 org-default-attrs/target
+tests
+**/__pycache__

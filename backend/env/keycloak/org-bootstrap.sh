@@ -1,137 +1,121 @@
 #!/bin/bash
 set -euo pipefail
+umask 077
 
+BOOTSTRAP=/opt/keycloak/bootstrap
+work=$1
+config=$work/config.json
 KCADM=/opt/keycloak/bin/kcadm.sh
-SERVER=${KEYCLOAK_SERVER:-http://keycloak:8080}
-REALM=${KEYCLOAK_REALM:-ceeds}
-CLIENT_ID=${KEYCLOAK_CLIENT:-ceeds-frontend}
-ADMIN_USER=${KEYCLOAK_ADMIN:-admin}
-ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+REALM=ceeds
+path=${KC_HTTP_RELATIVE_PATH:-/}
+SERVER="http://127.0.0.1:${KC_HTTP_PORT:-8080}/${path#/}"
+SERVER=${SERVER%/}
 
-ORGANIZATIONS=(
-  "fhooe|FHOOE|fh-ooe.at|OPERATIONAL_ENTITY|"
-)
+admin() { "$KCADM" "$@" --config "$work/kcadm.config"; }
+get() { admin get "$1" -r "$REALM" "${@:2}"; }
+put() { admin update "$1" -r "$REALM" -f -; }
+post() { admin create "$1" -r "$REALM" -f - "${@:2}"; }
+required_id() { jq -er '.[0].id // error("Required Keycloak resource missing")'; }
 
-MEMBERSHIPS=(
-  "ceeds|fhooe"
-)
-
-json_field() {
-  grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed 's/.*"\([^"]*\)"$/\1/'
-}
-
-as_json_array() {
-  if [ -z "$1" ]; then
-    printf '[""]'
-  else
-    printf '["%s"]' "$(echo "$1" | sed 's/,/","/g')"
-  fi
-}
-
-echo "Waiting for $SERVER ..."
-until $KCADM config credentials --server "$SERVER" --realm master \
-    --user "$ADMIN_USER" --password "$ADMIN_PASSWORD" >/dev/null 2>&1; do
+echo 'Waiting for local Keycloak admin endpoint ...'
+until admin config credentials --server "$SERVER" --realm master \
+    --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" >/dev/null 2>&1; do
   sleep 2
 done
 
-echo "Enabling organizations on realm $REALM"
-$KCADM update "realms/$REALM" -s organizationsEnabled=true
+admin update "realms/$REALM" -s organizationsEnabled=true
+get events/config | jq '.eventsListeners = ((.eventsListeners // []) + ["jboss-logging", "org-default-attrs"] | unique)' | put events/config
+put users/profile < "$BOOTSTRAP/user-profile.json"
 
-echo "Enabling organization default attributes listener on realm $REALM"
-$KCADM update events/config -r "$REALM" \
-  -s 'eventsListeners=["jboss-logging","org-default-attrs"]'
+# Import is skipped for existing realms. Reconcile required clients explicitly.
+jq '.clients[] | select(.clientId == "ceeds-frontend")' "$BOOTSTRAP/ceeds-realm.json" > "$work/frontend.json"
+jq --slurpfile config "$config" '
+  .rootUrl = $config[0].frontendUrls[0] |
+  .redirectUris = ($config[0].frontendUrls | map(. + "/*")) |
+  .webOrigins = ($config[0].frontendUrls | map(capture("^(?<origin>https?://[^/]+)").origin)) |
+  .attributes["post.logout.redirect.uris"] = ($config[0].frontendUrls | map(. + "/*") | join("##"))
+  ' "$work/frontend.json" > "$work/frontend-configured.json"
+clients=$(get clients -q clientId=ceeds-frontend)
+if [[ $(jq 'length' <<< "$clients") == 0 ]]; then
+  client_uuid=$(post clients -i < "$work/frontend-configured.json")
+else
+  client_uuid=$(required_id <<< "$clients")
+  get "clients/$client_uuid" | jq --slurpfile desired "$work/frontend-configured.json" '
+    .rootUrl = $desired[0].rootUrl | .redirectUris = $desired[0].redirectUris |
+    .webOrigins = $desired[0].webOrigins | .attributes = ((.attributes // {}) + $desired[0].attributes)
+    ' | put "clients/$client_uuid"
+fi
+scope_uuid=$(get client-scopes | jq -er '[.[] | select(.name == "organization")][0].id // error("Organization scope missing")')
+if get "clients/$client_uuid/optional-client-scopes" | jq -e --arg id "$scope_uuid" 'any(.[]; .id == $id)' >/dev/null; then
+  admin delete "clients/$client_uuid/optional-client-scopes/$scope_uuid" -r "$REALM"
+fi
+admin update "clients/$client_uuid/default-client-scopes/$scope_uuid" -r "$REALM"
+mapper=$(get "client-scopes/$scope_uuid/protocol-mappers/models" | jq -ec '
+  [.[] | select(.protocolMapper == "oidc-organization-membership-mapper")][0] // error("Organization mapper missing")')
+mapper_uuid=$(jq -r '.id' <<< "$mapper")
+jq '.config.addOrganizationId = "true" | .config.addOrganizationAttributes = "true"' <<< "$mapper" | put "client-scopes/$scope_uuid/protocol-mappers/models/$mapper_uuid"
 
-echo "Reducing the registration form to username and password"
-$KCADM update "users/profile" -r "$REALM" -f - <<'PROFILE'
-{
-  "attributes": [
-    {
-      "name": "username",
-      "displayName": "${username}",
-      "validations": {
-        "length": { "min": 3, "max": 255 },
-        "username-prohibited-characters": {},
-        "up-username-not-idn-homograph": {}
-      },
-      "permissions": { "view": [ "admin", "user" ], "edit": [ "admin", "user" ] },
-      "multivalued": false,
-      "required": { "roles": [ "user" ] }
-    },
-    {
-      "name": "email",
-      "displayName": "${email}",
-      "validations": { "email": {}, "length": { "max": 255 } },
-      "permissions": { "view": [ "admin" ], "edit": [ "admin" ] },
-      "multivalued": false
-    }
-  ],
-  "groups": []
-}
-PROFILE
+clients=$(get clients -q clientId=ceeds-directory)
+jq --arg secret "$CEEDS_DIRECTORY_CLIENT_SECRET" '.clients[] | select(.clientId == "ceeds-directory") | .secret = $secret' "$BOOTSTRAP/ceeds-realm.json" > "$work/directory.json"
+if [[ $(jq 'length' <<< "$clients") == 0 ]]; then
+  directory_uuid=$(post clients -i < "$work/directory.json")
+else
+  directory_uuid=$(required_id <<< "$clients")
+  get "clients/$directory_uuid" | jq --slurpfile desired "$work/directory.json" '. + $desired[0]' | put "clients/$directory_uuid"
+fi
+service_user=$(get "clients/$directory_uuid/service-account-user" | jq -er .id)
+management_uuid=$(get clients -q clientId=realm-management | required_id)
+get "clients/$management_uuid/roles/view-organizations" | jq '[.]' | post "users/$service_user/role-mappings/clients/$management_uuid"
 
-client_uuid=$($KCADM get clients -r "$REALM" -q "clientId=$CLIENT_ID" --fields id | json_field id)
-scope_uuid=$($KCADM get client-scopes -r "$REALM" --fields id,name \
-  | tr -d '\n ' | sed 's/},{/}\n{/g' | grep '"name":"organization"' | json_field id)
-
-echo "Making the organization client scope a default scope of $CLIENT_ID"
-$KCADM delete "clients/$client_uuid/optional-client-scopes/$scope_uuid" -r "$REALM" 2>/dev/null || true
-$KCADM update "clients/$client_uuid/default-client-scopes/$scope_uuid" -r "$REALM"
-
-echo "Adding organization id and attributes to the organization claim"
-mapper_uuid=$($KCADM get "client-scopes/$scope_uuid/protocol-mappers/models" -r "$REALM" --fields id,protocolMapper \
-  | tr -d '\n ' | sed 's/},{/}\n{/g' | grep '"protocolMapper":"oidc-organization-membership-mapper"' | json_field id)
-$KCADM update "client-scopes/$scope_uuid/protocol-mappers/models/$mapper_uuid" -r "$REALM" \
-  -s 'config."addOrganizationId"=true' \
-  -s 'config."addOrganizationAttributes"=true'
-
-for entry in "${ORGANIZATIONS[@]}"; do
-  IFS='|' read -r alias name domain roles nations <<< "$entry"
-  org_uuid=$($KCADM get organizations -r "$REALM" --fields id,alias \
-    | tr -d '\n ' | sed 's/},{/}\n{/g' | grep "\"alias\":\"$alias\"" | json_field id || true)
-
-  if [ -z "$org_uuid" ]; then
+# Organization endpoint defaults to a limited page. Always traverse all pages.
+organizations='[]'
+first=0
+while true; do
+  page=$(get organizations -q "first=$first" -q max=100 -q briefRepresentation=false)
+  organizations=$(jq -n --argjson all "$organizations" --argjson page "$page" '$all + $page')
+  [[ $(jq 'length' <<< "$page") == 100 ]] || break
+  first=$((first + 100))
+done
+jq -c '.organizations[]' "$config" > "$work/organizations.jsonl"
+while IFS= read -r desired; do
+  alias=$(jq -r .alias <<< "$desired")
+  org_uuid=$(jq -r --arg alias "$alias" '[.[] | select(.alias == $alias)][0].id // empty' <<< "$organizations")
+  if [[ -z $org_uuid ]]; then
     echo "Creating organization $alias"
-    $KCADM create organizations -r "$REALM" \
-      -s "alias=$alias" -s "name=$name" -s enabled=true \
-      -s "domains=[{\"name\":\"$domain\",\"verified\":false}]" \
-      -s "attributes.ceeds_role=$(as_json_array "$roles")" \
-      -s "attributes.ceeds_nations=$(as_json_array "$nations")"
-    org_uuid=$($KCADM get organizations -r "$REALM" --fields id,alias \
-      | tr -d '\n ' | sed 's/},{/}\n{/g' | grep "\"alias\":\"$alias\"" | json_field id)
+    org_uuid=$(post organizations -i <<< "$desired")
+    organizations=$(jq --arg id "$org_uuid" --argjson org "$desired" '. + [$org + {id: $id}]' <<< "$organizations")
   else
     echo "Updating organization $alias"
-    $KCADM update "organizations/$org_uuid" -r "$REALM" \
-      -s "attributes.ceeds_role=$(as_json_array "$roles")" \
-      -s "attributes.ceeds_nations=$(as_json_array "$nations")"
+    get "organizations/$org_uuid" | jq --argjson desired "$desired" '.attributes = ((.attributes // {}) + $desired.attributes)' | put "organizations/$org_uuid"
+    organizations=$(jq --arg id "$org_uuid" --argjson desired "$desired" '
+      map(if .id == $id then .attributes = ((.attributes // {}) + $desired.attributes) else . end)
+      ' <<< "$organizations")
   fi
-  eval "ORG_UUID_${alias}=$org_uuid"
-done
+done < "$work/organizations.jsonl"
+jq -c '.[] | select((.attributes.ceeds_role // [] | length) == 0 or
+                    (.attributes.ceeds_nations // [] | length) == 0)' <<< "$organizations" > "$work/backfill.jsonl"
+while IFS= read -r organization; do
+  org_uuid=$(jq -r .id <<< "$organization")
+  jq '
+    .attributes //= {} |
+    if (.attributes.ceeds_role // [] | length) == 0 then .attributes.ceeds_role = [""] else . end |
+    if (.attributes.ceeds_nations // [] | length) == 0 then .attributes.ceeds_nations = [""] else . end
+    ' <<< "$organization" | put "organizations/$org_uuid"
+done < "$work/backfill.jsonl"
 
-echo "Backfilling organization default attributes"
-$KCADM get organizations -r "$REALM" --fields id \
-  | tr -d '\n ' | sed 's/},{/}\n/g' \
-  | while IFS= read -r organization_json; do
-    org_uuid=$(printf '%s' "$organization_json" | json_field id)
-    if [ -n "$org_uuid" ]; then
-      $KCADM get "organizations/$org_uuid" -r "$REALM" \
-        | $KCADM update "organizations/$org_uuid" -r "$REALM" -f -
-    fi
-  done
-
-for entry in "${MEMBERSHIPS[@]}"; do
-  IFS='|' read -r username alias <<< "$entry"
-  eval "org_uuid=\$ORG_UUID_${alias}"
-  user_uuid=$($KCADM get users -r "$REALM" -q "username=$username" --fields id | json_field id)
-  if [ -z "$user_uuid" ]; then
-    echo "User $username not found, skipping membership in $alias"
-    continue
-  fi
-  if $KCADM get "organizations/$org_uuid/members" -r "$REALM" --fields username | grep -q "\"$username\""; then
-    echo "User $username already a member of $alias"
+if [[ $(jq -r .demoUser "$config") == true ]]; then
+  users=$(get users -q username=ceeds -q exact=true)
+  if [[ $(jq 'length' <<< "$users") == 0 ]]; then
+    user_uuid=$(jq '.users[] | select(.username == "ceeds")' "$BOOTSTRAP/ceeds-realm.json" | post users -i)
   else
-    echo "Adding $username to $alias"
-    $KCADM create "organizations/$org_uuid/members" -r "$REALM" -f - <<< "\"$user_uuid\""
+    user_uuid=$(required_id <<< "$users")
   fi
-done
-
-echo "Keycloak organization bootstrap done."
+  org_uuid=$(jq -r '[.[] | select(.alias == "fhooe")][0].id // empty' <<< "$organizations")
+  if [[ -n $org_uuid ]]; then
+    # User memberships avoid paging through all organization members.
+    if ! get "organizations/members/$user_uuid/organizations" | jq -e --arg id "$org_uuid" 'any(.[]; .id == $id)' >/dev/null; then
+      jq -n --arg id "$user_uuid" '$id' | post "organizations/$org_uuid/members"
+    fi
+  fi
+fi
+echo 'Keycloak organization bootstrap done.'

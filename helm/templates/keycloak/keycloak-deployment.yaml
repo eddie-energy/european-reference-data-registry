@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
         - name: keycloak
-          image: "{{ .Values.keycloak.image.name }}:{{ .Values.keycloak.image.version }}"
-          args: [ "start", "--import-realm" ]
+          image: "{{ .Values.keycloak.image.name }}:{{ .Values.keycloak.image.version | default .Chart.AppVersion | required "Set keycloak.image.version to a published CEEDS Keycloak tag; packaged charts provide Chart.appVersion." }}"
+          args: [ "start" ]
           ports:
             - name: http
               containerPort: 8080
@@ -44,16 +44,38 @@ spec:
               value: xforwarded
             - name: KC_HEALTH_ENABLED
               value: "true"
-          volumeMounts:
-            - name: realm-config
-              mountPath: /opt/keycloak/data/import
+            - name: CEEDS_DIRECTORY_CLIENT_SECRET
+              value: {{ .Values.keycloak.directoryClientSecret | quote }}
+            - name: CEEDS_FRONTEND_URLS
+              value: {{ .Values.keycloak.frontendUrls | default (printf "%s://%s" (ternary "https" "http" .Values.ingress.tls.enabled) .Values.ingress.host) | quote }}
+            - name: CEEDS_BOOTSTRAP_DEMO_USER
+              value: "false"
+            {{- if hasKey .Values.keycloak.bootstrap "organizations" }}
+            - name: CEEDS_BOOTSTRAP_ORGANIZATIONS
+              value: {{ .Values.keycloak.bootstrap.organizations | quote }}
+            {{- end }}
+            {{- if hasKey .Values.keycloak.bootstrap "roles" }}
+            - name: CEEDS_BOOTSTRAP_ORGANIZATION_ROLES
+              value: {{ .Values.keycloak.bootstrap.roles | quote }}
+            {{- end }}
+            {{- if hasKey .Values.keycloak.bootstrap "nations" }}
+            - name: CEEDS_BOOTSTRAP_ORGANIZATION_NATIONS
+              value: {{ .Values.keycloak.bootstrap.nations | quote }}
+            {{- end }}
+          startupProbe:
+            exec:
+              command: [ "/opt/keycloak/bootstrap/healthcheck.sh" ]
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 40
+          readinessProbe:
+            exec:
+              command: [ "/opt/keycloak/bootstrap/healthcheck.sh" ]
+            periodSeconds: 5
+            timeoutSeconds: 3
           {{- include "european-reference-data-registry.resources" .Values.keycloak.resources | nindent 10 }}
-      volumes:
-        - name: realm-config
-          configMap:
-            name: {{ .Release.Name }}-keycloak-realm
-            items:
-              - key: realm.json
-                path: realm.json
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}
-

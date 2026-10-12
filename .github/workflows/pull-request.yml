@@ -10,6 +10,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  keycloak:
+    uses: ./.github/workflows/keycloak-image.yml
+    permissions:
+      contents: read
+      packages: read
+
   build:
     name: Build Backend
     runs-on: self-hosted

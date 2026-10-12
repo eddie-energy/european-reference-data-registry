@@ -19,10 +19,20 @@ postgres:
 keycloak:
   enabled: true
   image:
-    name: quay.io/keycloak/keycloak
-    version: 26.6.0
+    name: ghcr.io/eddie-energy/ceeds-keycloak
+    # Empty uses Chart.appVersion, pinned to published snapshot by chart CI.
+    version: ""
   httpRelativePath: /auth
   directoryClientSecret: ceeds-directory-dev-secret
+  # Empty URLs use ingress host; explicit semicolon-separated URLs override it.
+  frontendUrls: ""
+  # All omitted: seed FHOOE. Set organizations: "" to disable seeding.
+  bootstrap: {}
+  # Example:
+  # bootstrap:
+  #   organizations: "fhooe;eda;enedis"
+  #   roles: "OPERATIONAL_ENTITY;NDSF;NDSF"
+  #   nations: ";AUT;FRA"
   secret:
     name: keycloak-secret
 

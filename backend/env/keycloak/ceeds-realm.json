@@ -30,6 +30,16 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:8080/*"
       }
+    },
+    {
+      "clientId": "ceeds-directory",
+      "name": "CEEDS organization directory",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "users": [
@@ -47,5 +57,10 @@
   ],
   "registrationEmailAsUsername": false,
   "verifyEmail": false,
-  "resetPasswordAllowed": false
+  "resetPasswordAllowed": false,
+  "organizationsEnabled": true,
+  "eventsListeners": [
+    "jboss-logging",
+    "org-default-attrs"
+  ]
 }

@@ -3,11 +3,19 @@ name: Publish Helm chart
 on:
   push:
     branches: [ main ]
-    paths: [ helm/** ]
   workflow_dispatch:
 
 jobs:
+  keycloak-image:
+    uses: ./.github/workflows/keycloak-image.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      publish: true
+
   package-and-push-chart:
+    needs: keycloak-image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,8 +33,11 @@ jobs:
             -u ${{ github.actor }} --password-stdin
 
       - name: Package and push chart
+        env:
+          KEYCLOAK_IMAGE_TAG: ${{ needs.keycloak-image.outputs.image-tag }}
         run: |
-          helm package helm --destination /tmp/chart-dist
+          helm lint helm --set-string "keycloak.image.version=$KEYCLOAK_IMAGE_TAG"
+          helm package helm --destination /tmp/chart-dist --app-version "$KEYCLOAK_IMAGE_TAG"
           chart_file=$(ls /tmp/chart-dist/european-reference-data-registry-*.tgz)
           helm push "$chart_file" oci://ghcr.io/eddie-energy/charts
 
