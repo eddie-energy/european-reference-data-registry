@@ -16,5 +16,7 @@ public interface ResponsibilityRepository extends JpaRepository<Responsibility, 
 
     List<Responsibility> findByOrganizationIdIn(Set<UUID> organizationIds);
 
+    void deleteByOrganizationId(UUID organizationId);
+
     void deleteByReferenceDataObjectIdAndOrganizationIdAndNation(UUID objectId, UUID organizationId, Nation nation);
 }

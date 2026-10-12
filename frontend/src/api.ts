@@ -3,8 +3,6 @@ import type { components, paths } from './schema'
 import { BASE_URL } from './config'
 import { keycloak } from './keycloak'
 
-export { BASE_URL }
-
 async function fetch(
   init?: RequestInit,
   skipContentType?: boolean,
@@ -283,4 +281,42 @@ export async function removeResponsibility(
     '/reference-data-objects/{id}/responsibilities/{organizationId}/{nation}',
     { params: { path: { id, organizationId, nation } } },
   )
+}
+
+export async function listManagementUsers() {
+  return (await fetch()).GET('/management/users')
+}
+
+export async function listAllOrganizations() {
+  return (await fetch()).GET('/management/all-organizations')
+}
+
+export async function updateManagementUser(
+  userId: string,
+  body: components['schemas']['UpdateManagementUserRequest'],
+) {
+  return (await fetch()).PUT('/management/users/{userId}', {
+    params: { path: { userId } },
+    body,
+  })
+}
+
+export async function createManagementUser(
+  body: components['schemas']['CreateManagementUserRequest'],
+) {
+  return (await fetch()).POST('/management/users', { body })
+}
+
+export async function createOrganization(body: components['schemas']['CreateOrganizationRequest']) {
+  return (await fetch()).POST('/management/organizations', { body })
+}
+
+export async function updateOrganization(
+  organizationId: string,
+  body: components['schemas']['UpdateOrganizationRequest'],
+) {
+  return (await fetch()).PUT('/management/organizations/{organizationId}', {
+    params: { path: { organizationId } },
+    body,
+  })
 }

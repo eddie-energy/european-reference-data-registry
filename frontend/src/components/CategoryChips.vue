@@ -21,7 +21,7 @@ const categories: { value: Category; label: string }[] = [
       class="category-chip"
       :class="{ selected: modelValue === category.value }"
       :aria-pressed="modelValue === category.value"
-      :disabled="disabled"
+      :disabled
       @click="emit('update:modelValue', modelValue === category.value ? undefined : category.value)"
     >
       {{ category.label }}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AlertToastList from './components/AlertToastList.vue'
+import BetaBanner from './components/BetaBanner.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import SidebarNavigation from './components/SidebarNavigation.vue'
 </script>
@@ -7,6 +8,7 @@ import SidebarNavigation from './components/SidebarNavigation.vue'
 <template>
   <ConfirmDialog />
   <AlertToastList />
+  <BetaBanner />
   <div class="content-grid">
     <SidebarNavigation class="sticky sidebar" />
     <RouterView v-slot="{ Component }" class="main-default">
