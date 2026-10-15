@@ -138,9 +138,9 @@ Gradle** (Settings → Build Tools → Gradle → "Build and run using: Gradle")
 
 ```sh
 ./gradlew :backend:bootRun          # run (serves API + frontend on :8080)
-./gradlew :backend:build            # compile + test + bundle frontend
+./gradlew :backend:build            # compile + unit/integration tests + bundle frontend (requires Docker)
 ./gradlew :backend:test             # unit tests only (excludes *IntegrationTest)
-./gradlew :backend:integrationTest  # *IntegrationTest classes — needs a running DB
+./gradlew :backend:integrationTest  # *IntegrationTest classes — starts Postgres with Testcontainers (requires Docker)
 ./gradlew :backend:test --tests 'energy.eddie.s3.services.ReferenceDataEntryServiceTest'                                      # single class
 ./gradlew :backend:test --tests 'energy.eddie.s3.services.ReferenceDataEntryServiceTest.createReferenceDataEntry_storesTypedValues'  # single method
 ./gradlew :api:generateServerApi    # regenerate Java API types from the spec
@@ -161,7 +161,8 @@ docker compose -f backend/env/docker-compose.yaml up -d   # postgres (:5440) + k
   excluded). Annotate nullable fields/params/returns with `@Nullable`; a missed one fails the build,
   not just a warning.
 - Test split is by name: any class ending `IntegrationTest` is excluded from `test` and only runs
-  under `integrationTest` (which needs Postgres up).
+  under `integrationTest` (which starts PostgreSQL using Testcontainers and requires Docker).
+- `check` and `build` run both test suites. Unit tests (`test`) require neither Docker nor a database.
 - Dependency versions are locked (`dependencyLocking` / `*.lockfile`).
 - **Commit messages** must start with an issue reference or `NOISSUE`, matching
   `^((#|GH-|gh-)[0-9]+|NOISSUE).+` (CI-enforced on non-`main` branches).

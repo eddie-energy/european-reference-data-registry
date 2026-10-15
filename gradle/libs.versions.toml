@@ -16,6 +16,7 @@ postgresql = "42.7.8"
 springdoc = "2.8.6"
 spring-boot = "3.5.0"
 spring-dependency-management = "1.1.7"
+testcontainers = "1.21.4"
 
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone-core" }
@@ -39,6 +40,9 @@ spring-boot-starter-validation = { module = "org.springframework.boot:spring-boo
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
 spring-security-test = { module = "org.springframework.security:spring-security-test" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers", version.ref = "spring-boot" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 
 [bundles]
 flyway-runtime = ["flyway-core", "flyway-database-postgresql"]

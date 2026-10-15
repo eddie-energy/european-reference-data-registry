@@ -1,5 +1,6 @@
 package energy.eddie.s3.repositories;
 
+import energy.eddie.s3.config.PostgresTestConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import energy.eddie.s3.generated.model.ReferenceDataEntryValueDto;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,6 +30,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
+@ActiveProfiles("test")
+@Import(PostgresTestConfiguration.class)
 @Transactional
 class ReferenceDataEntryRepositoryIntegrationTest {
 

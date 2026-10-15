@@ -1,5 +1,6 @@
 package energy.eddie.s3.repositories;
 
+import energy.eddie.s3.config.PostgresTestConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import energy.eddie.s3.models.referencedata.Nation;
@@ -10,9 +11,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
+@ActiveProfiles("test")
+@Import(PostgresTestConfiguration.class)
 @Transactional
 class ResponsibilityRepositoryIntegrationTest {
     @Autowired ReferenceDataObjectRepository objects;
