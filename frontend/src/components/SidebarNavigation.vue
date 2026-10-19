@@ -2,8 +2,9 @@
 import { computed } from 'vue'
 import { userRole, username } from '@/stores/userInfo'
 import { isAuthenticated, login, logout, register } from '@/keycloak'
+import { BASE_URL } from '@/config'
 
-const swaggerUrl = `${import.meta.env.VITE_BASE_URL}/swagger-ui.html`
+const swaggerUrl = `${BASE_URL}/swagger-ui.html`
 
 const ROLE_LABELS = {
   viewer: 'Viewer',
