@@ -108,6 +108,7 @@ public class KeycloakAdminClient {
     private String accessToken() {
         if (clientSecret.isBlank()) {
             log.warn("No client secret provided");
+            throw unavailable();
         }
         var form = "grant_type=client_credentials&client_id=" + encode(clientId)
                 + "&client_secret=" + encode(clientSecret);
