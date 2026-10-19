@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { maintainableNations, userRole } from '@/stores/userInfo'
 import ReferenceDataEntryTable from '@/components/ReferenceDataEntryTable.vue'
 import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
+import { functionalBuildingBlockLabels } from '@/constants/functionalBuildingBlocks'
 
 const { id } = defineProps<{ id: string }>()
 const route = useRoute()
@@ -123,6 +124,17 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
       </p>
       <h1>{{ currentObject.name }}</h1>
       <p>{{ currentObject.description }}</p>
+      <p v-if="currentObject.buildingBlock" class="building-block">
+        Functional building block:
+        <a
+          v-if="currentObject.buildingBlockUrl"
+          :href="currentObject.buildingBlockUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ functionalBuildingBlockLabels[currentObject.buildingBlock] }}</a
+        >
+        <span v-else>{{ functionalBuildingBlockLabels[currentObject.buildingBlock] }}</span>
+      </p>
 
       <nav class="tabs">
         <button

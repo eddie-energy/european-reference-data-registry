@@ -9,10 +9,12 @@ import energy.eddie.s3.models.referencedata.Field;
 import energy.eddie.s3.models.referencedata.ReferenceDataObject;
 import energy.eddie.s3.models.referencedata.ReferenceDataObjectVersion;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface ReferenceDataObjectMapper {
 
+    @Mapping(target = "buildingBlockUrl", ignore = true)
     ReferenceDataObjectDetail toDetail(ReferenceDataObject referenceDataObject);
 
     ReferenceDataObjectVersionDetail toVersionDetail(ReferenceDataObjectVersion version);

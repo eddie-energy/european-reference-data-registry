@@ -413,6 +413,33 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /reference-data-objects/{id}/building-block:
+    put:
+      tags: [ ReferenceData ]
+      operationId: updateReferenceDataObjectBuildingBlock
+      summary: Set or clear a reference data object's functional building block
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReferenceDataObjectBuildingBlockRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceDataObjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /reference-data-objects/{id}/versions:
     post:
       tags: [ ReferenceData ]
@@ -1016,12 +1043,35 @@ components:
           minLength: 1
         category:
           $ref: '#/components/schemas/ReferenceDataObjectCategory'
+        buildingBlock:
+          $ref: '#/components/schemas/FunctionalBuildingBlock'
 
     UpdateReferenceDataObjectCategoryRequest:
       type: object
       properties:
         category:
           $ref: '#/components/schemas/ReferenceDataObjectCategory'
+
+    UpdateReferenceDataObjectBuildingBlockRequest:
+      type: object
+      properties:
+        buildingBlock:
+          allOf:
+            - $ref: '#/components/schemas/FunctionalBuildingBlock'
+          nullable: true
+          description: Omit or set to null to clear the selection.
+
+    FunctionalBuildingBlock:
+      type: string
+      enum:
+        - ACCESS_TO_METERING_AND_CONSUMPTION_DATA
+        - ACCESS_TO_BASIC_MASTER_DATA
+        - ACCESS_TO_IMPLICIT_FLEXIBILITY_SIGNALS
+        - CUSTOMER_SWITCHING
+        - COLLECTIVE_SELF_CONSUMPTION_AND_ENERGY_COMMUNITIES
+        - FLEXIBLE_CONNECTION_AGREEMENTS
+        - DEMAND_RESPONSE_PROCEDURES
+        - FORECAST_AND_PLANNING_DATA
 
     ReferenceDataObjectCategory:
       type: string
@@ -1231,6 +1281,15 @@ components:
           type: string
         category:
           $ref: '#/components/schemas/ReferenceDataObjectCategory'
+        buildingBlock:
+          allOf:
+            - $ref: '#/components/schemas/FunctionalBuildingBlock'
+          nullable: true
+        buildingBlockUrl:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Shared documentation URL maintained in the database.
         createdAt:
           type: string
           format: date-time

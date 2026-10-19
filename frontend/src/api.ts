@@ -63,6 +63,20 @@ export async function updateReferenceDataObjectCategory(
   })
 }
 
+export async function updateReferenceDataObjectBuildingBlock(
+  id: components['parameters']['ReferenceDataObjectId'],
+  body: components['schemas']['UpdateReferenceDataObjectBuildingBlockRequest'],
+): Promise<{
+  data?: components['schemas']['ReferenceDataObjectDetail']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).PUT('/reference-data-objects/{id}/building-block', {
+    params: { path: { id } },
+    body,
+  })
+}
+
 export async function deleteReferenceDataObject(
   id: components['parameters']['ReferenceDataObjectId'],
 ): Promise<{

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -54,14 +55,24 @@ class KeycloakOrganizationDirectoryTest {
     }
 
     @Test
-    void missingCredentialReturnsServiceUnavailable() {
+    void missingCredentialReturnsServiceUnavailable() throws IOException {
+        var requests = new AtomicInteger();
+        server = HttpServer.create(
+                new InetSocketAddress(java.net.InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), 0), 0);
+        server.createContext("/token", exchange -> {
+            requests.incrementAndGet();
+            respond(exchange, 404, "{}");
+        });
+        server.start();
+        var base = "http://127.0.0.1:" + server.getAddress().getPort();
         var directory = new KeycloakOrganizationDirectory(new KeycloakAdminClient(
-                new ObjectMapper(), "http://localhost", "ceeds", "http://localhost/token", "ceeds-directory", ""));
+                new ObjectMapper(), base, "ceeds", base + "/token", "ceeds-directory", ""));
 
         assertThatThrownBy(directory::list)
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
                         .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(requests.get()).isZero();
     }
 
     private static void respond(com.sun.net.httpserver.HttpExchange exchange, int status, String body)

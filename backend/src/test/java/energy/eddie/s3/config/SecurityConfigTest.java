@@ -130,6 +130,37 @@ class SecurityConfigTest {
     }
 
     @Test
+    void buildingBlockUpdate_requiresOperationalEntity() throws Exception {
+        mockMvc.perform(put("/api/reference-data-objects/{id}/building-block", ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        for (var role : List.of(CeedsRole.NDSF, CeedsRole.PARTICIPANT)) {
+            mockMvc.perform(put("/api/reference-data-objects/{id}/building-block", ID)
+                            .with(jwt().authorities(new SimpleGrantedAuthority(role.authority())))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        mockMvc.perform(put("/api/reference-data-objects/{id}/building-block", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"buildingBlock\":\"CUSTOMER_SWITCHING\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void buildingBlockUpdate_rejectsUnknownEnum() throws Exception {
+        mockMvc.perform(put("/api/reference-data-objects/{id}/building-block", ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"buildingBlock\":\"UNKNOWN\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void referenceDataEntryWriteAsNdsf_isAllowed() throws Exception {
         given(referenceDataEntryService.createReferenceDataEntry(any(), any(), any()))
                 .willReturn(new ReferenceDataEntryDto());

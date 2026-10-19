@@ -14,6 +14,7 @@ import {
   unlinkField,
   reorderFields,
   updateReferenceDataObjectCategory,
+  updateReferenceDataObjectBuildingBlock,
 } from '@/api'
 import FieldForm from '@/components/FieldForm.vue'
 import ButtonLink from '@/components/ButtonLink.vue'
@@ -22,7 +23,9 @@ import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { userRole } from '@/stores/userInfo'
 import type { components } from '@/schema'
-import CategoryChips from '@/components/CategoryChips.vue'
+import OptionalSelect from '@/components/OptionalSelect.vue'
+import { referenceDataObjectCategoryLabels } from '@/constants/referenceDataObjectCategories'
+import { functionalBuildingBlockLabels } from '@/constants/functionalBuildingBlocks'
 
 const { id } = defineProps<{ id: components['parameters']['ReferenceDataObjectId'] }>()
 
@@ -80,7 +83,9 @@ const canDeleteDraftVersion = computed(
 
 const submitting = ref(false)
 
-const setCategory = async (category: components['schemas']['ReferenceDataObjectCategory'] | undefined) => {
+const setCategory = async (
+  category: components['schemas']['ReferenceDataObjectCategory'] | undefined,
+) => {
   submitting.value = true
   try {
     const { data, error } = await updateReferenceDataObjectCategory(id, { category })
@@ -91,6 +96,26 @@ const setCategory = async (category: components['schemas']['ReferenceDataObjectC
     referenceDataObject.value = data
     await updateReferenceDataObjects()
     success('Category updated')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const setBuildingBlock = async (
+  buildingBlock: components['schemas']['FunctionalBuildingBlock'] | undefined,
+) => {
+  submitting.value = true
+  try {
+    const { data, error } = await updateReferenceDataObjectBuildingBlock(id, { buildingBlock })
+    if (!data) {
+      danger(error?.message ?? 'Failed to update building block')
+      return
+    }
+    referenceDataObject.value = data
+    await updateReferenceDataObjects()
+    success('Building block updated')
+  } catch {
+    danger('Failed to update building block')
   } finally {
     submitting.value = false
   }
@@ -254,10 +279,22 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
     <h2>Edit</h2>
     <div v-if="isOperationalEntity" class="category-field">
       <span>Category (optional)</span>
-      <CategoryChips
+      <OptionalSelect
+        label="Category"
+        :options="referenceDataObjectCategoryLabels"
         :model-value="referenceDataObject?.category"
         :disabled="submitting"
         @update:model-value="setCategory"
+      />
+    </div>
+    <div v-if="isOperationalEntity" class="category-field">
+      <span>Functional building block (optional)</span>
+      <OptionalSelect
+        label="Functional building block"
+        :options="functionalBuildingBlockLabels"
+        :model-value="referenceDataObject?.buildingBlock"
+        :disabled="submitting"
+        @update:model-value="setBuildingBlock"
       />
     </div>
     <ButtonLink
