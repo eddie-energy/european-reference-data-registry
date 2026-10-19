@@ -49,11 +49,13 @@ const carouselKey = computed(() =>
 
 const carouselConfig = computed(() => ({
   itemsToShow: 1,
+  itemsToScroll: 1,
   gap: 64,
-  wrapAround: filteredReferenceDataObjects.value.length > 3,
+  disableWhenSlidesFit: true,
+  wrapAround: false,
   breakpoints: {
-    640: { itemsToShow: 2 },
-    1024: { itemsToShow: 3 },
+    640: { itemsToShow: 2, itemsToScroll: 2 },
+    1024: { itemsToShow: 3, itemsToScroll: 3 },
   },
 }))
 </script>
@@ -89,7 +91,11 @@ const carouselConfig = computed(() => ({
         </button>
       </div>
       <div class="carousel-wrapper">
-        <Carousel v-if="filteredReferenceDataObjects.length" :key="carouselKey" v-bind="carouselConfig">
+        <Carousel
+          v-if="filteredReferenceDataObjects.length"
+          :key="carouselKey"
+          v-bind="carouselConfig"
+        >
           <Slide
             v-for="referenceDataObject in filteredReferenceDataObjects"
             :key="referenceDataObject.id"
