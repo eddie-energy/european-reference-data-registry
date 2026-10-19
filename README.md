@@ -34,6 +34,18 @@ Operational Entity users assign NDSF organizations to reference data objects and
 
 Local Keycloak bootstrap creates the `ceeds-directory` service account. For Helm, add `directory-client-secret` to the existing `keycloak-secret` before upgrading. The chart passes this secret to Keycloak and backend and provisions `view-organizations` on the service account. Existing realms are updated by the bootstrap job. Keycloak 26.7.4 is required for this narrow read permission.
 
+## Functional building-block links
+
+Each building block has one shared documentation URL in `functional_building_block`.
+Update it directly in PostgreSQL; subsequent API reads use the new URL without a restart.
+Set `url` to `NULL` to show the block label without a link.
+
+```sql
+UPDATE functional_building_block
+SET url = 'https://example.org/customer-switching'
+WHERE code = 'CUSTOMER_SWITCHING';
+```
+
 ## Tests
 
 ```sh

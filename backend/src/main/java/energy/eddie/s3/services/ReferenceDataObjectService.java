@@ -10,6 +10,7 @@ import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
+import energy.eddie.s3.generated.model.UpdateReferenceDataObjectBuildingBlockRequest;
 import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.*;
@@ -17,9 +18,12 @@ import energy.eddie.s3.repositories.ReferenceDataEntryRepository;
 import energy.eddie.s3.repositories.ReferenceDataEntryValueRepository;
 import energy.eddie.s3.repositories.FieldRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectRepository;
+import energy.eddie.s3.repositories.FunctionalBuildingBlockRepository;
 import energy.eddie.s3.repositories.ReferenceDataObjectVersionRepository;
 import energy.eddie.s3.security.CurrentUser;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReferenceDataObjectService {
 
     private final ReferenceDataObjectRepository referenceDataObjectRepository;
+    private final FunctionalBuildingBlockRepository buildingBlockRepository;
     private final ReferenceDataObjectVersionRepository versionRepository;
     private final FieldRepository fieldRepository;
     private final ReferenceDataEntryRepository referenceDataEntryRepository;
@@ -41,6 +46,7 @@ public class ReferenceDataObjectService {
 
     public ReferenceDataObjectService(
             ReferenceDataObjectRepository referenceDataObjectRepository,
+            FunctionalBuildingBlockRepository buildingBlockRepository,
             ReferenceDataObjectVersionRepository versionRepository,
             FieldRepository fieldRepository,
             ReferenceDataEntryRepository referenceDataEntryRepository,
@@ -49,6 +55,7 @@ public class ReferenceDataObjectService {
             CurrentUser currentUser,
             ResponsibilityService responsibilityService) {
         this.referenceDataObjectRepository = referenceDataObjectRepository;
+        this.buildingBlockRepository = buildingBlockRepository;
         this.versionRepository = versionRepository;
         this.fieldRepository = fieldRepository;
         this.referenceDataEntryRepository = referenceDataEntryRepository;
@@ -65,19 +72,23 @@ public class ReferenceDataObjectService {
             rdo.setCategory(ReferenceDataObjectCategory.valueOf(
                     request.getCategory().name()));
         }
+        if (request.getBuildingBlock() != null) {
+            rdo.setBuildingBlock(FunctionalBuildingBlock.valueOf(request.getBuildingBlock().name()));
+        }
         var version = new ReferenceDataObjectVersion(rdo, 1, PublishState.DRAFT);
         rdo.getVersions().add(version);
-        return mapper.toDetail(referenceDataObjectRepository.save(rdo));
+        return withBuildingBlockUrl(mapper.toDetail(referenceDataObjectRepository.save(rdo)));
     }
 
     @Transactional(readOnly = true)
     public List<ReferenceDataObjectDetail> getAll() {
         var seesDrafts = currentUser.maySeeDrafts();
-        return referenceDataObjectRepository.findAll().stream()
+        var details = referenceDataObjectRepository.findAll().stream()
                 .map(mapper::toDetail)
                 .map(detail -> withVisibleVersions(detail, seesDrafts))
                 .filter(detail -> !detail.getVersions().isEmpty())
                 .toList();
+        return withBuildingBlockUrls(details);
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +97,7 @@ public class ReferenceDataObjectService {
         if (detail.getVersions().isEmpty()) {
             throw new NotFoundException("Reference data object " + id + " not found");
         }
-        return detail;
+        return withBuildingBlockUrl(detail);
     }
 
     @Transactional
@@ -96,7 +107,40 @@ public class ReferenceDataObjectService {
         rdo.setCategory(category == null
                 ? null
                 : ReferenceDataObjectCategory.valueOf(category.name()));
-        return mapper.toDetail(rdo);
+        return withBuildingBlockUrl(mapper.toDetail(rdo));
+    }
+
+    @Transactional
+    public ReferenceDataObjectDetail updateBuildingBlock(UUID id, UpdateReferenceDataObjectBuildingBlockRequest request) {
+        var rdo = findReferenceDataObject(id);
+        var buildingBlock = request.getBuildingBlock();
+        rdo.setBuildingBlock(buildingBlock == null ? null : FunctionalBuildingBlock.valueOf(buildingBlock.name()));
+        return withBuildingBlockUrl(mapper.toDetail(rdo));
+    }
+
+    private ReferenceDataObjectDetail withBuildingBlockUrl(ReferenceDataObjectDetail detail) {
+        withBuildingBlockUrls(List.of(detail));
+        return detail;
+    }
+
+    private List<ReferenceDataObjectDetail> withBuildingBlockUrls(List<ReferenceDataObjectDetail> details) {
+        var codes = details.stream()
+                .map(ReferenceDataObjectDetail::getBuildingBlock)
+                .filter(Objects::nonNull)
+                .map(code -> FunctionalBuildingBlock.valueOf(code.name()))
+                .collect(Collectors.toSet());
+        if (codes.isEmpty()) {
+            return details;
+        }
+        var links = new HashMap<FunctionalBuildingBlock, String>();
+        for (var link : buildingBlockRepository.findLinksByCodeIn(codes)) {
+            links.put(link.getCode(), link.getUrl());
+        }
+        for (var detail : details) {
+            var code = detail.getBuildingBlock();
+            detail.setBuildingBlockUrl(code == null ? null : links.get(FunctionalBuildingBlock.valueOf(code.name())));
+        }
+        return details;
     }
 
     private static ReferenceDataObjectDetail withVisibleVersions(

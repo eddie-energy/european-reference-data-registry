@@ -45,6 +45,12 @@ public class ReferenceDataObject {
     @Column
     protected ReferenceDataObjectCategory category;
 
+    @Setter
+    @Nullable
+    @Enumerated(EnumType.STRING)
+    @Column
+    protected FunctionalBuildingBlock buildingBlock;
+
     @Column(nullable = false, updatable = false)
     protected Instant createdAt;
 

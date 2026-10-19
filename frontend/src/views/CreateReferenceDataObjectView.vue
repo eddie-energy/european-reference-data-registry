@@ -7,6 +7,7 @@ import ButtonLink from '@/components/ButtonLink.vue'
 import useToast from '@/composables/useToast'
 import CrossIcon from '@/assets/icons/CrossIcon.svg'
 import CategoryChips from '@/components/CategoryChips.vue'
+import FunctionalBuildingBlockChips from '@/components/FunctionalBuildingBlockChips.vue'
 import type { components } from '@/schema'
 
 const router = useRouter()
@@ -15,6 +16,7 @@ const { success } = useToast()
 const name = ref('')
 const description = ref('')
 const category = ref<components['schemas']['ReferenceDataObjectCategory']>()
+const buildingBlock = ref<components['schemas']['FunctionalBuildingBlock']>()
 const errorMessage = ref('')
 const submitting = ref(false)
 
@@ -27,6 +29,7 @@ const submit = async () => {
       name: name.value,
       description: description.value,
       category: category.value,
+      buildingBlock: buildingBlock.value,
     })
 
   if (!referenceDataObject) {
@@ -67,6 +70,10 @@ const submit = async () => {
       <div class="category-field">
         <span>Category (optional)</span>
         <CategoryChips v-model="category" :disabled="submitting" />
+      </div>
+      <div class="category-field">
+        <span>Functional building block (optional)</span>
+        <FunctionalBuildingBlockChips v-model="buildingBlock" :disabled="submitting" />
       </div>
       <p v-if="errorMessage" class="error-banner">
         <CrossIcon class="error-icon" />
