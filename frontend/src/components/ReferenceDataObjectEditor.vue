@@ -23,8 +23,8 @@ import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { userRole } from '@/stores/userInfo'
 import type { components } from '@/schema'
-import CategoryChips from '@/components/CategoryChips.vue'
-import FunctionalBuildingBlockChips from '@/components/FunctionalBuildingBlockChips.vue'
+import CategorySelect from '@/components/CategorySelect.vue'
+import FunctionalBuildingBlockSelect from '@/components/FunctionalBuildingBlockSelect.vue'
 
 const { id } = defineProps<{ id: components['parameters']['ReferenceDataObjectId'] }>()
 
@@ -278,7 +278,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
     <h2>Edit</h2>
     <div v-if="isOperationalEntity" class="category-field">
       <span>Category (optional)</span>
-      <CategoryChips
+      <CategorySelect
         :model-value="referenceDataObject?.category"
         :disabled="submitting"
         @update:model-value="setCategory"
@@ -286,7 +286,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
     </div>
     <div v-if="isOperationalEntity" class="category-field">
       <span>Functional building block (optional)</span>
-      <FunctionalBuildingBlockChips
+      <FunctionalBuildingBlockSelect
         :model-value="referenceDataObject?.buildingBlock"
         :disabled="submitting"
         @update:model-value="setBuildingBlock"

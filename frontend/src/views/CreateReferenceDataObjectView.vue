@@ -6,8 +6,8 @@ import { updateReferenceDataObjects } from '@/stores/referenceDataObject'
 import ButtonLink from '@/components/ButtonLink.vue'
 import useToast from '@/composables/useToast'
 import CrossIcon from '@/assets/icons/CrossIcon.svg'
-import CategoryChips from '@/components/CategoryChips.vue'
-import FunctionalBuildingBlockChips from '@/components/FunctionalBuildingBlockChips.vue'
+import CategorySelect from '@/components/CategorySelect.vue'
+import FunctionalBuildingBlockSelect from '@/components/FunctionalBuildingBlockSelect.vue'
 import type { components } from '@/schema'
 
 const router = useRouter()
@@ -69,11 +69,11 @@ const submit = async () => {
       </label>
       <div class="category-field">
         <span>Category (optional)</span>
-        <CategoryChips v-model="category" :disabled="submitting" />
+        <CategorySelect v-model="category" :disabled="submitting" />
       </div>
       <div class="category-field">
         <span>Functional building block (optional)</span>
-        <FunctionalBuildingBlockChips v-model="buildingBlock" :disabled="submitting" />
+        <FunctionalBuildingBlockSelect v-model="buildingBlock" :disabled="submitting" />
       </div>
       <p v-if="errorMessage" class="error-banner">
         <CrossIcon class="error-icon" />
