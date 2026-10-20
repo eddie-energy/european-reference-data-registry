@@ -30,7 +30,11 @@ docker compose -f backend/env/docker-compose.yaml up -d postgres
 
 ## Organization responsibilities
 
-Operational Entity users assign NDSF organizations to reference data objects and nations at `/management/responsibilities`. Assignment nation may differ from the organization's `ceeds_nations` in Keycloak. NDSF members need a matching assignment to maintain national entries or add national fields.
+Operational Entity users assign NDSF organizations to reference data objects and nations at `/management/responsibilities`. They can create or edit organizations with the `COORDINATING_NDSF` role in User Management → Organizations. Coordinating NDSF members also see Responsibilities and may assign or remove responsibilities only for the `ceeds_nations` of their coordinating organizations. Other NDSF memberships do not expand this coordinating scope. Organization and user administration remain restricted to Operational Entity users.
+
+Coordinating NDSFs retain ordinary NDSF capabilities. Assignment nation may differ from the organization's `ceeds_nations` in Keycloak. NDSF members need a matching assignment to maintain national entries or add national fields. Switching between NDSF and coordinating NDSF preserves assignments.
+
+Organizations can hold multiple CEEDS roles. User Management displays and saves all selected roles; responsibilities remain while any NDSF role is retained. The API accepts `roles` arrays and still supports legacy single `role` requests. Keycloak bootstrap forwards `ceeds_role` and `ceeds_nations` organization attributes without a role allowlist, so `COORDINATING_NDSF` needs no separate realm-role registration.
 
 Local Keycloak bootstrap creates the `ceeds-directory` service account. For Helm, add `directory-client-secret` to the existing `keycloak-secret` before upgrading. The chart passes this secret to Keycloak and backend and provisions `view-organizations` on the service account. Existing realms are updated by the bootstrap job. Keycloak 26.7.4 is required for this narrow read permission.
 

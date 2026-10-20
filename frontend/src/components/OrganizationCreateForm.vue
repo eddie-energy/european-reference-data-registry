@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import ButtonLink from '@/components/ButtonLink.vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import { createOrganization } from '@/api'
 import { nations } from '@/constants/nations'
 import useToast from '@/composables/useToast'
+import { organizationRoleLabels } from '@/constants/organizationRoles'
 
 type Nation = components['schemas']['Nation']
 type Role = components['schemas']['OrganizationRole']
@@ -14,7 +15,8 @@ const emit = defineEmits<{
 }>()
 
 const name = ref('')
-const role = ref<Role>('NDSF')
+const roles = ref<Role[]>(['NDSF'])
+const hasNdsfRole = computed(() => roles.value.some((role) => role !== 'OPERATIONAL_ENTITY'))
 const selectedNations = ref<Nation[]>([])
 const saving = ref(false)
 const errorMessage = ref('')
@@ -26,8 +28,8 @@ const submit = async () => {
   try {
     const { data, error } = await createOrganization({
       name: name.value.trim(),
-      role: role.value,
-      nations: role.value === 'NDSF' ? selectedNations.value : [],
+      roles: roles.value,
+      nations: hasNdsfRole.value ? selectedNations.value : [],
     })
     if (!data) {
       errorMessage.value = error?.message ?? 'Failed to create organization'
@@ -49,14 +51,14 @@ const submit = async () => {
       Organization name
       <input v-model="name" required minlength="2" maxlength="255" autocomplete="off" />
     </label>
-    <label>
-      Role
-      <select v-model="role">
-        <option value="NDSF">NDSF</option>
-        <option value="OPERATIONAL_ENTITY">Operational Entity</option>
-      </select>
-    </label>
-    <fieldset v-if="role === 'NDSF'">
+    <fieldset>
+      <legend>Roles</legend>
+      <label v-for="(label, role) in organizationRoleLabels" :key="role" class="check">
+        <input v-model="roles" type="checkbox" :value="role" />
+        {{ label }}
+      </label>
+    </fieldset>
+    <fieldset v-if="hasNdsfRole">
       <legend>Nations</legend>
       <label v-for="nation in nations" :key="nation.value" class="check">
         <input v-model="selectedNations" type="checkbox" :value="nation.value" />
@@ -67,7 +69,7 @@ const submit = async () => {
       <ButtonLink
         type="button"
         button-style="primary"
-        :disabled="saving || name.trim().length < 2"
+        :disabled="saving || name.trim().length < 2 || !roles.length"
         @click="submit"
       >
         Create organization

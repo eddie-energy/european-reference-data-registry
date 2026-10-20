@@ -37,7 +37,7 @@ public class KeycloakUserDirectory {
     }
 
     public record KeycloakOrganization(
-            UUID id, String alias, String name, @Nullable CeedsRole role, List<Nation> nations) {
+            UUID id, String alias, String name, List<CeedsRole> roles, List<Nation> nations) {
     }
 
     public List<KeycloakUser> listUsers() {
@@ -68,23 +68,23 @@ public class KeycloakUserDirectory {
         return client.find(ORGANIZATIONS_PATH + "/" + organizationId).map(KeycloakUserDirectory::toOrganizationDetails);
     }
 
-    public KeycloakOrganization createOrganization(String name, String alias, CeedsRole role, List<Nation> nations) {
+    public KeycloakOrganization createOrganization(String name, String alias, List<CeedsRole> roles, List<Nation> nations) {
         var organization = mapper.createObjectNode();
         organization.put("name", name);
         organization.put(ALIAS, alias);
         organization.put(ENABLED, true);
-        writeRole(organization.putObject(KeycloakAttributes.ATTRIBUTES), role, nations);
+        writeRoles(organization.putObject(KeycloakAttributes.ATTRIBUTES), roles, nations);
         var location = client.postForLocation(ORGANIZATIONS_PATH, organization);
         return new KeycloakOrganization(
-                UUID.fromString(location.substring(location.lastIndexOf('/') + 1)), alias, name, role, nations);
+                UUID.fromString(location.substring(location.lastIndexOf('/') + 1)), alias, name, roles, nations);
     }
 
-    public void updateOrganization(UUID organizationId, CeedsRole role, List<Nation> nations) {
+    public void updateOrganization(UUID organizationId, List<CeedsRole> roles, List<Nation> nations) {
         var organization = client.get(ORGANIZATIONS_PATH + "/" + organizationId);
         if (!(organization instanceof ObjectNode representation)) {
             throw new NotFoundException("Organization " + organizationId + " not found");
         }
-        writeRole(representation.withObjectProperty(KeycloakAttributes.ATTRIBUTES), role, nations);
+        writeRoles(representation.withObjectProperty(KeycloakAttributes.ATTRIBUTES), roles, nations);
         client.put(ORGANIZATIONS_PATH + "/" + organizationId, representation);
     }
 
@@ -164,8 +164,9 @@ public class KeycloakUserDirectory {
         }
     }
 
-    private void writeRole(ObjectNode attributes, CeedsRole role, List<Nation> nations) {
-        attributes.putArray(KeycloakAttributes.ROLE).add(role.name());
+    private void writeRoles(ObjectNode attributes, List<CeedsRole> roles, List<Nation> nations) {
+        var roleValues = attributes.putArray(KeycloakAttributes.ROLE);
+        roles.forEach(role -> roleValues.add(role.name()));
         var values = attributes.putArray(KeycloakAttributes.NATIONS);
         nations.forEach(nation -> values.add(nation.getValue()));
     }
@@ -175,7 +176,7 @@ public class KeycloakUserDirectory {
                 UUID.fromString(node.path("id").asText()),
                 node.path(ALIAS).asText(),
                 node.path("name").asText(),
-                KeycloakAttributes.roleOf(node),
+                KeycloakAttributes.rolesOf(node),
                 KeycloakAttributes.nationsOf(node));
     }
 

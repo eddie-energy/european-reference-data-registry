@@ -36,6 +36,18 @@ class OrganizationDefaultAttributesTest {
     }
 
     @Test
+    void coordinatingRoleAndNationsRemainUnchanged() {
+        var attributes = Map.of(
+                "ceeds_role", List.of("NDSF", "COORDINATING_NDSF"),
+                "ceeds_nations", List.of("AUT"));
+
+        var result = OrganizationDefaultAttributes.addTo(attributes);
+
+        assertFalse(result.changed());
+        assertEquals(attributes, result.attributes());
+    }
+
+    @Test
     void emptyListsBecomePersistableBlankValues() {
         var result = OrganizationDefaultAttributes.addTo(Map.of(
                 "ceeds_role", List.of(),

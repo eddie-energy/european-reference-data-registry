@@ -33,9 +33,55 @@ import org.springframework.test.util.ReflectionTestUtils;
 class OrganizationManagementServiceTest {
     @Mock KeycloakUserDirectory directory;
     @Mock ResponsibilityRepository responsibilities;
+    @Mock energy.eddie.s3.security.CurrentUser currentUser;
     @InjectMocks OrganizationManagementService service;
 
+    @org.junit.jupiter.api.BeforeEach
+    void operationalEntity() {
+        org.mockito.Mockito.lenient().when(currentUser.isOperationalEntity()).thenReturn(true);
+    }
+
     private final UUID organizationId = UUID.randomUUID();
+
+    @Test
+    void coordinatorOrganizationListFiltersForeignResponsibilitiesAndDisablesSettings() {
+        when(currentUser.isOperationalEntity()).thenReturn(false);
+        when(currentUser.mayManageResponsibilitiesFor(energy.eddie.s3.models.referencedata.Nation.AUT)).thenReturn(true);
+        var object = new ReferenceDataObject("Permissions", "description");
+        ReflectionTestUtils.setField(object, "id", UUID.randomUUID());
+        when(directory.listOrganizationDetails()).thenReturn(List.of(
+                organization("eda", CeedsRole.NDSF, Nation.GER),
+                organization("ops", CeedsRole.OPERATIONAL_ENTITY)));
+        when(responsibilities.findByOrganizationIdIn(any())).thenReturn(List.of(
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.AUT),
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+        var result = service.list();
+        assertThat(result).singleElement().satisfies(org -> {
+            assertThat(org.getEditable()).isFalse();
+            assertThat(org.getResponsibilities()).extracting(item -> item.getNation()).containsExactly(Nation.AUT);
+        });
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = OrganizationRole.class, names = {"NDSF", "COORDINATING_NDSF"})
+    void ndsfRoleChangesKeepNationsAndResponsibilities(OrganizationRole role) {
+        when(directory.findOrganization(organizationId)).thenReturn(Optional.of(organization("eda", CeedsRole.NDSF, Nation.AUT)));
+        var object = new ReferenceDataObject("Permissions", "description");
+        var objectId = UUID.randomUUID();
+        ReflectionTestUtils.setField(object, "id", objectId);
+        when(responsibilities.findByOrganizationIdIn(Set.of(organizationId))).thenReturn(List.of(
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+        var result = service.update(organizationId, new UpdateOrganizationRequest()
+                .role(role)
+                .nations(List.of(Nation.AUT)));
+        assertThat(result.getNations()).containsExactly(Nation.AUT);
+        assertThat(result.getRole()).isEqualTo(role);
+        assertThat(result.getResponsibilities()).singleElement().satisfies(item -> {
+            assertThat(item.getReferenceDataObjectId()).isEqualTo(objectId);
+            assertThat(item.getNation()).isEqualTo(Nation.GER);
+        });
+        verify(responsibilities, never()).deleteByOrganizationId(any());
+    }
 
     @Test
     void listIncludesRoleNationsAndResponsibilities() {
@@ -44,7 +90,7 @@ class OrganizationManagementServiceTest {
         ReflectionTestUtils.setField(object, "id", objectId);
         when(directory.listOrganizationDetails()).thenReturn(List.of(
                 organization("eda", CeedsRole.NDSF, Nation.AUT, Nation.GER),
-                new KeycloakUserDirectory.KeycloakOrganization(UUID.randomUUID(), "fhooe", "FHOOE", CeedsRole.OPERATIONAL_ENTITY, List.of())));
+                new KeycloakUserDirectory.KeycloakOrganization(UUID.randomUUID(), "fhooe", "FHOOE", List.of(CeedsRole.OPERATIONAL_ENTITY), List.of())));
         when(responsibilities.findByOrganizationIdIn(any())).thenReturn(List.of(
                 new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
 
@@ -60,22 +106,76 @@ class OrganizationManagementServiceTest {
         assertThat(result.get(1).getEditable()).isFalse();
     }
 
-    @Test
-    void createDerivesAliasAndKeepsNationsForNdsf() {
-        when(directory.createOrganization("Energy Agency GmbH", "energy-agency-gmbh", CeedsRole.NDSF, List.of(Nation.AUT, Nation.FRA)))
-                .thenReturn(organization("energy-agency-gmbh", CeedsRole.NDSF, Nation.AUT, Nation.FRA));
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = OrganizationRole.class, names = {"NDSF", "COORDINATING_NDSF"})
+    void createDerivesAliasAndKeepsNationsForNdsf(OrganizationRole role) {
+        var domainRole = CeedsRole.valueOf(role.name());
+        when(directory.createOrganization("Energy Agency GmbH", "energy-agency-gmbh", List.of(domainRole), List.of(Nation.AUT, Nation.FRA)))
+                .thenReturn(organization("energy-agency-gmbh", domainRole, Nation.AUT, Nation.FRA));
 
         var result = service.create(new CreateOrganizationRequest()
                 .name(" Energy Agency GmbH ")
-                .role(OrganizationRole.NDSF)
+                .role(role)
                 .nations(List.of(Nation.AUT, Nation.AUT, Nation.FRA)));
 
         assertThat(result.getNations()).containsExactly(Nation.AUT, Nation.FRA);
+        assertThat(result.getRole()).isEqualTo(role);
+    }
+
+    @Test
+    void mixedRolesAreListedWithoutChoosingAPrimaryRole() {
+        when(directory.listOrganizationDetails()).thenReturn(List.of(
+                new KeycloakUserDirectory.KeycloakOrganization(organizationId, "mixed", "Mixed",
+                        List.of(CeedsRole.NDSF, CeedsRole.OPERATIONAL_ENTITY), List.of(Nation.AUT))));
+
+        assertThat(service.list()).singleElement().satisfies(organization -> {
+            assertThat(organization.getRoles()).containsExactly(OrganizationRole.NDSF, OrganizationRole.OPERATIONAL_ENTITY);
+            assertThat(organization.getRole()).isNull();
+            assertThat(organization.getNations()).containsExactly(Nation.AUT);
+        });
+    }
+
+    @Test
+    void savingMixedRolesPreservesNationsAndResponsibilities() {
+        var roles = List.of(CeedsRole.NDSF, CeedsRole.OPERATIONAL_ENTITY);
+        when(directory.findOrganization(organizationId)).thenReturn(Optional.of(
+                new KeycloakUserDirectory.KeycloakOrganization(organizationId, "mixed", "Mixed", roles, List.of(Nation.AUT))));
+        var object = new ReferenceDataObject("Permissions", "description");
+        ReflectionTestUtils.setField(object, "id", UUID.randomUUID());
+        when(responsibilities.findByOrganizationIdIn(Set.of(organizationId))).thenReturn(List.of(
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.AUT)));
+
+        var result = service.update(organizationId, new UpdateOrganizationRequest()
+                .roles(new java.util.LinkedHashSet<>(List.of(OrganizationRole.NDSF, OrganizationRole.OPERATIONAL_ENTITY)))
+                .nations(List.of(Nation.AUT)));
+
+        assertThat(result.getRoles()).containsExactly(OrganizationRole.NDSF, OrganizationRole.OPERATIONAL_ENTITY);
+        assertThat(result.getRole()).isNull();
+        assertThat(result.getNations()).containsExactly(Nation.AUT);
+        assertThat(result.getResponsibilities()).singleElement().satisfies(item -> assertThat(item.getNation()).isEqualTo(Nation.AUT));
+        verify(directory).updateOrganization(organizationId, roles, List.of(Nation.AUT));
+        verify(responsibilities, never()).deleteByOrganizationId(any());
+    }
+
+    @Test
+    void createWithoutRolesIsBadRequest() {
+        assertThatThrownBy(() -> service.create(new CreateOrganizationRequest().name("Agency")))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(exception -> assertThat(((org.springframework.web.server.ResponseStatusException) exception)
+                        .getStatusCode().value()).isEqualTo(400));
+    }
+
+    @Test
+    void conflictingLegacyAndMultipleRolesAreRejected() {
+        assertThatThrownBy(() -> service.create(new CreateOrganizationRequest().name("Agency")
+                .role(OrganizationRole.OPERATIONAL_ENTITY).roles(Set.of(OrganizationRole.NDSF))))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        org.mockito.Mockito.verifyNoInteractions(directory, responsibilities);
     }
 
     @Test
     void createDropsNationsForOperationalEntity() {
-        when(directory.createOrganization("Ops", "ops", CeedsRole.OPERATIONAL_ENTITY, List.of()))
+        when(directory.createOrganization("Ops", "ops", List.of(CeedsRole.OPERATIONAL_ENTITY), List.of()))
                 .thenReturn(organization("ops", CeedsRole.OPERATIONAL_ENTITY));
 
         service.create(new CreateOrganizationRequest()
@@ -83,7 +183,7 @@ class OrganizationManagementServiceTest {
                 .role(OrganizationRole.OPERATIONAL_ENTITY)
                 .nations(List.of(Nation.GER)));
 
-        verify(directory).createOrganization("Ops", "ops", CeedsRole.OPERATIONAL_ENTITY, List.of());
+        verify(directory).createOrganization("Ops", "ops", List.of(CeedsRole.OPERATIONAL_ENTITY), List.of());
     }
 
     @Test
@@ -102,7 +202,7 @@ class OrganizationManagementServiceTest {
                 .role(OrganizationRole.NDSF)
                 .nations(List.of(Nation.AUT, Nation.ESP)));
 
-        verify(directory).updateOrganization(organizationId, CeedsRole.NDSF, List.of(Nation.AUT, Nation.ESP));
+        verify(directory).updateOrganization(organizationId, List.of(CeedsRole.NDSF), List.of(Nation.AUT, Nation.ESP));
         verify(responsibilities, never()).deleteByOrganizationId(any());
         assertThat(result.getNations()).containsExactly(Nation.AUT, Nation.ESP);
     }
@@ -116,7 +216,7 @@ class OrganizationManagementServiceTest {
                 .role(OrganizationRole.OPERATIONAL_ENTITY)
                 .nations(List.of(Nation.AUT)));
 
-        verify(directory).updateOrganization(organizationId, CeedsRole.OPERATIONAL_ENTITY, List.of());
+        verify(directory).updateOrganization(organizationId, List.of(CeedsRole.OPERATIONAL_ENTITY), List.of());
         verify(responsibilities).deleteByOrganizationId(organizationId);
         assertThat(result.getNations()).isEmpty();
     }
@@ -141,6 +241,6 @@ class OrganizationManagementServiceTest {
     }
 
     private KeycloakUserDirectory.KeycloakOrganization organization(String alias, CeedsRole role, Nation... nations) {
-        return new KeycloakUserDirectory.KeycloakOrganization(organizationId, alias, alias, role, List.of(nations));
+        return new KeycloakUserDirectory.KeycloakOrganization(organizationId, alias, alias, List.of(role), List.of(nations));
     }
 }

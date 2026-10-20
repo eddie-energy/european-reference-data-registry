@@ -4,9 +4,11 @@ import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import { assignResponsibility, removeResponsibility, updateOrganization } from '@/api'
 import { referenceDataObjects } from '@/stores/referenceDataObject'
+import { coordinatingNdsfNations, mayManageResponsibilities, userRole } from '@/stores/userInfo'
 import { nations } from '@/constants/nations'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
+import { organizationRoleLabels } from '@/constants/organizationRoles'
 
 type Nation = components['schemas']['Nation']
 type Role = components['schemas']['OrganizationRole']
@@ -17,16 +19,30 @@ const { organization } = defineProps<{
 
 const emit = defineEmits<{ changed: []; close: [] }>()
 
-const role = ref<Role>(organization.role ?? 'NDSF')
+const roles = ref<Role[]>([...organization.roles])
+const hasNdsfRole = computed(() => roles.value.some((role) => role !== 'OPERATIONAL_ENTITY'))
 const selectedNations = ref<Nation[]>([...organization.nations])
 const newObjectId = ref(referenceDataObjects.value?.[0]?.id ?? '')
-const newNation = ref<Nation>('AUT')
+const nationOptions = computed(() =>
+  userRole.value === 'operationalEntity'
+    ? nations
+    : nations.filter((nation) => coordinatingNdsfNations.value.includes(nation.value)),
+)
+const newNation = ref<Nation | ''>(nationOptions.value[0]?.value ?? '')
 const saving = ref(false)
 const errorMessage = ref('')
 const { confirm } = useConfirmDialog()
 const { success } = useToast()
 
-const isNdsf = computed(() => organization.role === 'NDSF')
+const isNdsf = computed(() => organization.roles.some((role) => role !== 'OPERATIONAL_ENTITY'))
+const mayEditSettings = computed(
+  () => userRole.value === 'operationalEntity' && organization.editable,
+)
+const visibleResponsibilities = computed(() =>
+  organization.responsibilities.filter((item) =>
+    nationOptions.value.some((nation) => nation.value === item.nation),
+  ),
+)
 
 const alreadyAssigned = computed(() =>
   organization.responsibilities.some(
@@ -62,8 +78,8 @@ const save = async () => {
     async () =>
       (
         await updateOrganization(organization.id, {
-          role: role.value,
-          nations: role.value === 'NDSF' ? selectedNations.value : [],
+          roles: roles.value,
+          nations: hasNdsfRole.value ? selectedNations.value : [],
         })
       ).error,
     'Organization updated',
@@ -72,13 +88,21 @@ const save = async () => {
 }
 
 const assign = async () => {
-  if (!newObjectId.value || alreadyAssigned.value) return
+  const nation = newNation.value
+  if (
+    !newObjectId.value ||
+    !nation ||
+    alreadyAssigned.value ||
+    !mayManageResponsibilities.value ||
+    !nationOptions.value.some((option) => option.value === nation)
+  )
+    return
   await run(
     async () =>
       (
         await assignResponsibility(newObjectId.value, {
           organizationId: organization.id,
-          nation: newNation.value,
+          nation,
         })
       ).error,
     'Responsibility assigned',
@@ -99,15 +123,15 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
 
 <template>
   <div class="organization-edit">
-    <form id="organization-form" class="section" @submit.prevent="save">
-      <label>
-        Role
-        <select v-model="role">
-          <option value="NDSF">NDSF</option>
-          <option value="OPERATIONAL_ENTITY">Operational Entity</option>
-        </select>
-      </label>
-      <fieldset v-if="role === 'NDSF'">
+    <form v-if="mayEditSettings" id="organization-form" class="section" @submit.prevent="save">
+      <fieldset>
+        <legend>Roles</legend>
+        <label v-for="(label, role) in organizationRoleLabels" :key="role" class="check">
+          <input v-model="roles" type="checkbox" :value="role" />
+          {{ label }}
+        </label>
+      </fieldset>
+      <fieldset v-if="hasNdsfRole">
         <legend>Nations</legend>
         <label v-for="nation in nations" :key="nation.value" class="check">
           <input v-model="selectedNations" type="checkbox" :value="nation.value" />
@@ -115,10 +139,12 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
         </label>
       </fieldset>
       <p v-else-if="organization.responsibilities.length" class="hint">
-        Saving as Operational Entity removes this organization's responsibilities.
+        Removing all NDSF roles removes this organization's responsibilities.
       </p>
       <div class="actions">
-        <ButtonLink type="submit" button-style="primary" :disabled="saving">Save</ButtonLink>
+        <ButtonLink type="submit" button-style="primary" :disabled="saving || !roles.length"
+          >Save</ButtonLink
+        >
         <ButtonLink
           type="button"
           button-style="secondary"
@@ -132,7 +158,7 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
 
     <section class="section">
       <h2>Responsibilities</h2>
-      <p v-if="!organization.responsibilities.length" class="hint">No responsibilities assigned.</p>
+      <p v-if="!visibleResponsibilities.length" class="hint">No responsibilities assigned.</p>
       <table v-else>
         <thead>
           <tr>
@@ -143,7 +169,7 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
         </thead>
         <tbody>
           <tr
-            v-for="item in organization.responsibilities"
+            v-for="item in visibleResponsibilities"
             :key="`${item.referenceDataObjectId}:${item.nation}`"
           >
             <td>{{ objectName(item.referenceDataObjectId) }}</td>
@@ -153,7 +179,7 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
                 type="button"
                 button-style="error-secondary"
                 size="compact"
-                :disabled="saving"
+                :disabled="saving || !mayManageResponsibilities"
                 @click="remove(item)"
               >
                 Remove
@@ -164,7 +190,10 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
       </table>
 
       <p v-if="!isNdsf" class="hint">
-        Only NDSF organizations can hold responsibilities. Save the role as NDSF first.
+        Only NDSF and coordinating NDSF organizations can hold responsibilities.
+      </p>
+      <p v-else-if="!mayManageResponsibilities || !nationOptions.length" class="hint">
+        No nations available for responsibility management.
       </p>
       <p v-else-if="!referenceDataObjects?.length" class="hint">
         No reference data objects exist yet.
@@ -181,7 +210,7 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
         <label>
           Nation
           <select v-model="newNation">
-            <option v-for="nation in nations" :key="nation.value" :value="nation.value">
+            <option v-for="nation in nationOptions" :key="nation.value" :value="nation.value">
               {{ nation.label }}
             </option>
           </select>

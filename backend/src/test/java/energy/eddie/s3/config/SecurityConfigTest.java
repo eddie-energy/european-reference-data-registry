@@ -74,6 +74,28 @@ class SecurityConfigTest {
     private JwtDecoder jwtDecoder;
 
     @Test
+    void coordinatorCanReadOrganizationsAndManageResponsibilitiesButCannotAdminister() throws Exception {
+        var coordinator = jwt().authorities(new SimpleGrantedAuthority("ROLE_COORDINATING_NDSF"));
+        for (var path : List.of("/api/management/organizations", "/api/management/all-organizations",
+                "/api/reference-data-objects/" + ID + "/responsibilities")) {
+            mockMvc.perform(get(path).with(coordinator)).andExpect(status().isOk());
+        }
+        mockMvc.perform(post("/api/reference-data-objects/{id}/responsibilities", ID).with(coordinator)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"organizationId\":\"" + ID + "\",\"nation\":\"AUT\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(delete("/api/reference-data-objects/{id}/responsibilities/{org}/AUT", ID, ID)
+                .with(coordinator)).andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/management/users").with(coordinator)).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/management/organizations").with(coordinator)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Agency\",\"role\":\"NDSF\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/management/organizations/{id}", ID).with(coordinator)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"NDSF\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void readWithoutToken_isAllowed() throws Exception {
         given(referenceDataObjectService.getAll()).willReturn(List.of());
 

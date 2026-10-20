@@ -18,7 +18,7 @@ tags:
   - name: Me
     description: Information about the authenticated caller
   - name: Responsibilities
-    description: Operational Entity responsibility management
+    description: Responsibility management by Operational Entity and country-scoped coordinating NDSFs
   - name: UserManagement
     description: Operational Entity management of Keycloak users
   - name: OrganizationManagement
@@ -33,6 +33,7 @@ paths:
       tags: [ Responsibilities ]
       operationId: listEligibleOrganizations
       summary: List Keycloak NDSF organizations available for assignment
+      description: Includes coordinating NDSFs. Available to Operational Entity and coordinating NDSF callers.
       responses:
         '200':
           description: OK
@@ -114,6 +115,7 @@ paths:
       tags: [ OrganizationManagement ]
       operationId: listAllOrganizations
       summary: List all enabled Keycloak organizations available for user membership
+      description: Coordinating NDSF callers receive only NDSF organizations, with responsibilities filtered to their coordinating nations and organization settings disabled.
       responses:
         '200':
           description: OK
@@ -801,12 +803,12 @@ components:
       type: string
       description: |
         Effective CEEDS role. VIEWER is implicit for anonymous callers, PARTICIPANT for every
-        authenticated one; NDSF and OPERATIONAL_ENTITY come from the caller's Keycloak organizations.
-      enum: [ VIEWER, PARTICIPANT, NDSF, OPERATIONAL_ENTITY ]
+        authenticated one; NDSF, COORDINATING_NDSF and OPERATIONAL_ENTITY come from the caller's Keycloak organizations.
+      enum: [ VIEWER, PARTICIPANT, NDSF, COORDINATING_NDSF, OPERATIONAL_ENTITY ]
 
     CurrentUserDto:
       type: object
-      required: [ username, roles, ndsfNations, organizations ]
+      required: [ username, roles, ndsfNations, coordinatingNdsfNations, organizations ]
       properties:
         username:
           type: string
@@ -817,6 +819,11 @@ components:
         ndsfNations:
           type: array
           description: Nations listed on the caller's Keycloak NDSF organizations; object assignments determine maintenance rights
+          items:
+            $ref: '#/components/schemas/Nation'
+        coordinatingNdsfNations:
+          type: array
+          description: Nations the caller may coordinate, derived only from coordinating NDSF memberships
           items:
             $ref: '#/components/schemas/Nation'
         organizations:
@@ -859,11 +866,12 @@ components:
 
     OrganizationRole:
       type: string
-      enum: [ NDSF, OPERATIONAL_ENTITY ]
+      enum: [ NDSF, COORDINATING_NDSF, OPERATIONAL_ENTITY ]
 
     CreateOrganizationRequest:
       type: object
-      required: [ name, role ]
+      required: [ name ]
+      description: Provide roles, or the legacy single role. At least one role is required.
       properties:
         name:
           type: string
@@ -871,9 +879,15 @@ components:
           maxLength: 255
         role:
           $ref: '#/components/schemas/OrganizationRole'
+        roles:
+          type: array
+          uniqueItems: true
+          description: All CEEDS roles assigned to the organization
+          items:
+            $ref: '#/components/schemas/OrganizationRole'
         nations:
           type: array
-          description: Only used for the NDSF role
+          description: Used for NDSF and COORDINATING_NDSF roles
           items:
             $ref: '#/components/schemas/Nation'
 
@@ -889,7 +903,7 @@ components:
 
     ManagedOrganizationDto:
       type: object
-      required: [ id, alias, name, editable, nations, responsibilities ]
+      required: [ id, alias, name, editable, roles, nations, responsibilities ]
       properties:
         id:
           type: string
@@ -905,6 +919,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/OrganizationRole'
           nullable: true
+          description: Legacy single-role representation; null when the organization has multiple roles
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OrganizationRole'
         nations:
           type: array
           items:
@@ -916,13 +936,18 @@ components:
 
     UpdateOrganizationRequest:
       type: object
-      required: [ role ]
+      description: Provide roles, or the legacy single role. Responsibilities are retained while any NDSF role remains.
       properties:
         role:
           $ref: '#/components/schemas/OrganizationRole'
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OrganizationRole'
         nations:
           type: array
-          description: Only used for the NDSF role
+          description: Used for NDSF and COORDINATING_NDSF roles
           items:
             $ref: '#/components/schemas/Nation'
 

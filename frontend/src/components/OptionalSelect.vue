@@ -18,7 +18,7 @@ const selection = computed({
 <template>
   <select v-model="selection" :aria-label="label" :disabled>
     <option :value="undefined">None</option>
-    <option v-for="(optionLabel, value) in options" :key="value" :value="value">
+    <option v-for="(optionLabel, value) in options" :key="value" :value>
       {{ optionLabel }}
     </option>
   </select>

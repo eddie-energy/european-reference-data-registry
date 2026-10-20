@@ -6,7 +6,6 @@ import energy.eddie.s3.security.CeedsRole;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import jakarta.annotation.Nullable;
 
 final class KeycloakAttributes {
     static final String ATTRIBUTES = "attributes";
@@ -38,11 +37,11 @@ final class KeycloakAttributes {
                 .toList();
     }
 
-    static @Nullable CeedsRole roleOf(JsonNode organization) {
+    static List<CeedsRole> rolesOf(JsonNode organization) {
         return values(organization.path(ATTRIBUTES).path(ROLE)).stream()
                 .map(CeedsRole::assignable)
                 .flatMap(java.util.Optional::stream)
-                .findFirst()
-                .orElse(null);
+                .distinct()
+                .toList();
     }
 }

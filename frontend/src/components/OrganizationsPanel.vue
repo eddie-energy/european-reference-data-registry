@@ -16,10 +16,12 @@ import {
 } from '@/stores/managementOrganizations'
 import { updateManagementUsers } from '@/stores/managementUsers'
 import { referenceDataObjects } from '@/stores/referenceDataObject'
+import { mayManageResponsibilities, userRole } from '@/stores/userInfo'
 import ModalDialog from '@/components/ModalDialog.vue'
 import OrganizationCreateForm from '@/components/OrganizationCreateForm.vue'
 import OrganizationEditForm from '@/components/OrganizationEditForm.vue'
 import SortableTable from '@/components/SortableTable.vue'
+import { organizationRoleLabels } from '@/constants/organizationRoles'
 
 type ManagedOrganization = components['schemas']['ManagedOrganizationDto']
 
@@ -35,13 +37,8 @@ const editingOrganization = computed(() =>
   managementOrganizations.value.find((organization) => organization.id === editingId.value),
 )
 
-const roleLabels: Record<components['schemas']['OrganizationRole'], string> = {
-  NDSF: 'NDSF',
-  OPERATIONAL_ENTITY: 'Operational Entity',
-}
-
-const roleLabel = (role?: components['schemas']['OrganizationRole'] | null) =>
-  role ? roleLabels[role] : '—'
+const roleLabel = (roles: components['schemas']['OrganizationRole'][]) =>
+  roles.map((role) => organizationRoleLabels[role]).join(', ') || '—'
 
 const objectName = (id: string) =>
   referenceDataObjects.value?.find((object) => object.id === id)?.name ?? id
@@ -49,7 +46,7 @@ const objectName = (id: string) =>
 const refresh = async () => {
   const [organizations] = await Promise.all([
     updateManagementOrganizations(),
-    updateManagementUsers(),
+    ...(userRole.value === 'operationalEntity' ? [updateManagementUsers()] : []),
   ])
   errorMessage.value = organizations.error?.message ?? ''
 }
@@ -90,9 +87,9 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
       h('span', { class: 'none' }, `(${ctx.row.original.alias})`),
     ],
   }),
-  columnHelper.accessor((organization) => roleLabel(organization.role), {
+  columnHelper.accessor((organization) => roleLabel(organization.roles), {
     id: 'role',
-    header: 'Role',
+    header: 'Roles',
   }),
   columnHelper.accessor(
     (organization) =>
@@ -119,7 +116,7 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
     header: 'Edit',
     enableSorting: false,
     cell: (ctx) =>
-      ctx.row.original.editable
+      ctx.row.original.editable || mayManageResponsibilities.value
         ? h(
             ButtonLink,
             {
@@ -129,7 +126,7 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
               size: 'compact',
               onClick: () => openEdit(ctx.row.original.id),
             },
-            () => 'Edit',
+            () => (ctx.row.original.editable ? 'Edit' : 'Responsibilities'),
           )
         : h('span', { class: 'none' }, 'Protected'),
   }),
@@ -139,7 +136,7 @@ const matchesSearch = (organization: ManagedOrganization, query: string) =>
   [
     organization.name,
     organization.alias,
-    roleLabel(organization.role),
+    roleLabel(organization.roles),
     ...organization.nations,
   ].some((value) => value.toLowerCase().includes(query))
 
@@ -170,8 +167,8 @@ const table = useVueTable({
 <template>
   <section
     id="panel-organizations"
-    role="tabpanel"
-    aria-labelledby="tab-organizations"
+    role="region"
+    aria-label="Organizations and responsibilities"
     class="panel"
   >
     <div class="toolbar">
@@ -181,7 +178,13 @@ const table = useVueTable({
         placeholder="Search by name, role or nation"
         aria-label="Search organizations"
       />
-      <ButtonLink type="button" button-style="primary" size="compact" @click="openCreate">
+      <ButtonLink
+        v-if="userRole === 'operationalEntity'"
+        type="button"
+        button-style="primary"
+        size="compact"
+        @click="openCreate"
+      >
         Create organization
       </ButtonLink>
     </div>
@@ -193,13 +196,18 @@ const table = useVueTable({
     />
     <p v-if="errorMessage" role="alert" class="error">{{ errorMessage }}</p>
 
-    <ModalDialog ref="createDialog" title="Create organization" size="large">
+    <ModalDialog
+      v-if="userRole === 'operationalEntity'"
+      ref="createDialog"
+      title="Create organization"
+      size="large"
+    >
       <OrganizationCreateForm :key="formKey" @created="created" />
     </ModalDialog>
 
     <ModalDialog
       ref="editDialog"
-      :title="`Edit ${editingOrganization?.name ?? 'organization'}`"
+      :title="`${editingOrganization?.editable ? 'Edit' : 'Responsibilities for'} ${editingOrganization?.name ?? 'organization'}`"
       size="large"
     >
       <OrganizationEditForm

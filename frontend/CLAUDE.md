@@ -21,8 +21,7 @@ types are generated from). Run all commands below from inside `frontend/`.
 - `pnpm format` — Prettier over `src/`
 - `pnpm generate-openapi-schemas` — regenerate `src/schema.d.ts` from `../api-specs/backend-api.yml`
   (config in `redocly.yaml`); run this after the OpenAPI spec changes
-- No test runner is configured yet (Vitest ESLint config exists for `src/**/__tests__/*` but no
-  tests/dependency are present).
+- No frontend test runner is configured. New frontend tests should use unit or end-to-end testing.
 
 Root-level Gradle also wires this up: `./gradlew :frontend:build` runs `pnpm run build` via the
 Node/pnpm Gradle plugin.
@@ -55,9 +54,11 @@ Node/pnpm Gradle plugin.
   `logout()` and `isAuthenticated()`; the sidebar shows Sign In / Create Account or the username plus
   Sign Out. `api.ts` refreshes the token only when authenticated and attaches `Authorization:
   Bearer …` when there is one — reads work without it, writes answer 401/403. The role comes from
-  `GET /api/me` via `updateUserInfo()`; `userRole` is `viewer | participant | ndsf | operationalEntity`
+  `GET /api/me` via `updateUserInfo()`; `userRole` is `viewer | participant | ndsf | coordinatingNdsf | operationalEntity`
   and per-nation NDSF scope is enforced by the backend, not the UI. Local Keycloak is the compose
-  container on :8081 (realm `ceeds`, client `ceeds-frontend`, user `ceeds`/`ceeds`).
+  container on :8081 (realm `ceeds`, client `ceeds-frontend`, user `ceeds`/`ceeds`). Coordinating
+  NDSFs retain assigned NDSF maintenance rights and access `/management/responsibilities` with
+  nation choices from `coordinatingNdsfNations`; user and organization settings remain Operational Entity only.
 - **Styling**: no component library — `src/assets/main.css` defines the design system as CSS
   custom properties (spacing scale, color palette, shadows, radii, tint/text color pairs via
   `color-mix()`). Components use scoped `<style>` blocks that consume these variables (e.g.

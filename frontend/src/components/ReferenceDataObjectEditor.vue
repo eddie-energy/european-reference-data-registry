@@ -405,7 +405,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
       </div>
     </template>
 
-    <template v-else>
+    <template v-else-if="isOperationalEntity">
       <ButtonLink
         component="button"
         buttonStyle="secondary"
@@ -416,6 +416,9 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
         Start new version to add fields
       </ButtonLink>
     </template>
+    <p v-else class="empty">
+      An Operational Entity must start a draft before national fields can be added.
+    </p>
   </section>
 </template>
 

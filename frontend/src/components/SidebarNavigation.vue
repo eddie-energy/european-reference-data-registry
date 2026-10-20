@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
-import { userRole, username } from '@/stores/userInfo'
+import { mayManageResponsibilities, userRole, username } from '@/stores/userInfo'
 import { isAuthenticated, login, logout, register } from '@/keycloak'
 import { BASE_URL } from '@/config'
 
@@ -10,6 +10,7 @@ const ROLE_LABELS = {
   viewer: 'Viewer',
   participant: 'Participant',
   ndsf: 'NDSF',
+  coordinatingNdsf: 'Coordinating NDSF',
   operationalEntity: 'Operational Entity',
 }
 
@@ -27,6 +28,9 @@ const roleLabel = computed(() => ROLE_LABELS[userRole.value])
       <RouterLink to="/"> Home </RouterLink>
       <RouterLink v-if="userRole === 'operationalEntity'" to="/management/users">
         User Management
+      </RouterLink>
+      <RouterLink v-if="mayManageResponsibilities" to="/management/responsibilities">
+        Responsibilities
       </RouterLink>
       <a :href="swaggerUrl" target="_blank">API</a>
     </nav>

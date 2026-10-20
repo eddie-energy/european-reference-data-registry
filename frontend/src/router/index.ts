@@ -3,7 +3,8 @@ import DashboardView from '@/views/DashboardView.vue'
 import ReferenceDataObjectView from '@/views/ReferenceDataObjectView.vue'
 import CreateReferenceDataObjectView from '@/views/CreateReferenceDataObjectView.vue'
 import UserManagementView from '@/views/UserManagementView.vue'
-import { userRole } from '@/stores/userInfo'
+import ResponsibilityManagementView from '@/views/ResponsibilityManagementView.vue'
+import { mayManageResponsibilities, userRole } from '@/stores/userInfo'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,6 +13,14 @@ const router = createRouter({
       path: '/',
       name: 'dashboard',
       component: DashboardView,
+    },
+    {
+      path: '/management/responsibilities',
+      name: 'responsibility-management',
+      component: ResponsibilityManagementView,
+      beforeEnter: () => {
+        if (!mayManageResponsibilities.value) return { name: 'dashboard' }
+      },
     },
     {
       path: '/management/users',

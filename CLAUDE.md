@@ -77,8 +77,8 @@ re-runs on every `docker compose up`.
 ### Roles come from Keycloak Organizations
 
 Roles are assigned to **organizations**, not users (issue #144). An organization carries two
-attributes, `ceeds_role` (`NDSF` / `OPERATIONAL_ENTITY`, multivalued) and `ceeds_nations`
-(`AUT`/`FRA`/`ESP`/`GER`, only meaningful with `NDSF`, so an Operational Entity carries none). Seed
+attributes, `ceeds_role` (`NDSF` / `COORDINATING_NDSF` / `OPERATIONAL_ENTITY`, multivalued) and `ceeds_nations`
+(`AUT`/`FRA`/`ESP`/`GER`, meaningful when either NDSF role is present, including alongside Operational Entity). Seed
 org: `fhooe` = Operational Entity, with the `ceeds` user as its member — the dev login therefore has
 full rights. Change it by editing the `ORGANIZATIONS` array (`alias|name|domain|roles|nations`) in
 `org-bootstrap.sh` and re-running that service. A user's effective roles are the **union** over every organization they
@@ -103,6 +103,7 @@ place that reads `SecurityContextHolder`; services ask it, nothing else.
 | `VIEWER` | anonymous | read published reference data objects and their reference data entries |
 | `PARTICIPANT` | any valid token | (API tokens — not built yet) |
 | `NDSF` | org attribute, per nation | create/update/delete reference data entries and add fields **of its nations**; see drafts |
+| `COORDINATING_NDSF` | org attribute, per nation | NDSF capabilities plus responsibility assignments for nations on coordinating memberships |
 | `OPERATIONAL_ENTITY` | org attribute | manage objects, versions, fields; see drafts. **Only** role that creates versions |
 
 - Enforcement lives in `SecurityConfig`'s `authorizeHttpRequests` matchers, **not** `@PreAuthorize`:

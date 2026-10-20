@@ -2,6 +2,7 @@ package energy.eddie.s3.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import energy.eddie.s3.generated.model.EligibleOrganizationDto;
+import energy.eddie.s3.security.CeedsRole;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +31,8 @@ public class KeycloakOrganizationDirectory {
 
     private static boolean eligible(JsonNode node) {
         return node.path("enabled").asBoolean(true) && KeycloakAttributes.values(node.path("attributes").path("ceeds_role"))
-                .contains("NDSF");
+                .stream().map(CeedsRole::assignable).flatMap(java.util.Optional::stream)
+                .anyMatch(CeedsRole::isNdsf);
     }
 
     private static EligibleOrganizationDto toDto(JsonNode node) {

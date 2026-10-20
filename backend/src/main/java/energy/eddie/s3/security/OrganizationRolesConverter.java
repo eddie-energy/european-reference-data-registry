@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class OrganizationRolesConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     public static final String NDSF_NATION_AUTHORITY_PREFIX = "NDSF_NATION_";
+    public static final String COORDINATING_NDSF_NATION_AUTHORITY_PREFIX = "COORDINATING_NDSF_NATION_";
     private static final String USERNAME_CLAIM = "preferred_username";
 
     @Override
@@ -27,6 +28,13 @@ public class OrganizationRolesConverter implements Converter<Jwt, AbstractAuthen
         authorities.add(CeedsRole.PARTICIPANT.authority());
         for (var membership : OrganizationClaim.read(jwt)) {
             membership.roles().forEach(role -> authorities.add(role.authority()));
+            if (membership.roles().stream().anyMatch(CeedsRole::isNdsf)) {
+                authorities.add(CeedsRole.NDSF.authority());
+            }
+            if (membership.roles().contains(CeedsRole.COORDINATING_NDSF)) {
+                membership.ndsfNations().forEach(nation -> authorities.add(
+                        COORDINATING_NDSF_NATION_AUTHORITY_PREFIX + nation.name()));
+            }
             membership.ndsfNations().forEach(nation -> authorities.add(NDSF_NATION_AUTHORITY_PREFIX + nation.name()));
         }
         return authorities.stream().map(SimpleGrantedAuthority::new).map(GrantedAuthority.class::cast).toList();

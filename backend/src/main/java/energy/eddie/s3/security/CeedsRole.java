@@ -7,7 +7,12 @@ public enum CeedsRole {
     VIEWER,
     PARTICIPANT,
     NDSF,
+    COORDINATING_NDSF,
     OPERATIONAL_ENTITY;
+
+    public boolean isNdsf() {
+        return this == NDSF || this == COORDINATING_NDSF;
+    }
 
     public String authority() {
         return "ROLE_" + name();
@@ -15,7 +20,7 @@ public enum CeedsRole {
 
     public static Optional<CeedsRole> assignable(String value) {
         return Arrays.stream(values())
-                .filter(role -> role == NDSF || role == OPERATIONAL_ENTITY)
+                .filter(role -> role.isNdsf() || role == OPERATIONAL_ENTITY)
                 .filter(role -> role.name().equalsIgnoreCase(value.trim()))
                 .findFirst();
     }
