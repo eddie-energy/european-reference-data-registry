@@ -21,6 +21,7 @@ import ModalDialog from '@/components/ModalDialog.vue'
 import OrganizationCreateForm from '@/components/OrganizationCreateForm.vue'
 import OrganizationEditForm from '@/components/OrganizationEditForm.vue'
 import SortableTable from '@/components/SortableTable.vue'
+import { organizationRoleLabels } from '@/constants/organizationRoles'
 
 type ManagedOrganization = components['schemas']['ManagedOrganizationDto']
 
@@ -36,14 +37,8 @@ const editingOrganization = computed(() =>
   managementOrganizations.value.find((organization) => organization.id === editingId.value),
 )
 
-const roleLabels: Record<components['schemas']['OrganizationRole'], string> = {
-  NDSF: 'NDSF',
-  COORDINATING_NDSF: 'Coordinating NDSF',
-  OPERATIONAL_ENTITY: 'Operational Entity',
-}
-
-const roleLabel = (role?: components['schemas']['OrganizationRole'] | null) =>
-  role ? roleLabels[role] : '—'
+const roleLabel = (roles: components['schemas']['OrganizationRole'][]) =>
+  roles.map((role) => organizationRoleLabels[role]).join(', ') || '—'
 
 const objectName = (id: string) =>
   referenceDataObjects.value?.find((object) => object.id === id)?.name ?? id
@@ -92,9 +87,9 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
       h('span', { class: 'none' }, `(${ctx.row.original.alias})`),
     ],
   }),
-  columnHelper.accessor((organization) => roleLabel(organization.role), {
+  columnHelper.accessor((organization) => roleLabel(organization.roles), {
     id: 'role',
-    header: 'Role',
+    header: 'Roles',
   }),
   columnHelper.accessor(
     (organization) =>
@@ -141,7 +136,7 @@ const matchesSearch = (organization: ManagedOrganization, query: string) =>
   [
     organization.name,
     organization.alias,
-    roleLabel(organization.role),
+    roleLabel(organization.roles),
     ...organization.nations,
   ].some((value) => value.toLowerCase().includes(query))
 

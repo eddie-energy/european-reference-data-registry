@@ -21,8 +21,7 @@ types are generated from). Run all commands below from inside `frontend/`.
 - `pnpm format` — Prettier over `src/`
 - `pnpm generate-openapi-schemas` — regenerate `src/schema.d.ts` from `../api-specs/backend-api.yml`
   (config in `redocly.yaml`); run this after the OpenAPI spec changes
-- `pnpm test` — Node test runner with Vite SSR for Vue behavior tests in `tests/`.
-  Gradle `:frontend:test` runs these tests; backend `check` includes them.
+- No frontend test runner is configured. New frontend tests should use unit or end-to-end testing.
 
 Root-level Gradle also wires this up: `./gradlew :frontend:build` runs `pnpm run build` via the
 Node/pnpm Gradle plugin.

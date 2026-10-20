@@ -34,6 +34,8 @@ Operational Entity users assign NDSF organizations to reference data objects and
 
 Coordinating NDSFs retain ordinary NDSF capabilities. Assignment nation may differ from the organization's `ceeds_nations` in Keycloak. NDSF members need a matching assignment to maintain national entries or add national fields. Switching between NDSF and coordinating NDSF preserves assignments.
 
+Organizations can hold multiple CEEDS roles. User Management displays and saves all selected roles; responsibilities remain while any NDSF role is retained. The API accepts `roles` arrays and still supports legacy single `role` requests. Keycloak bootstrap forwards `ceeds_role` and `ceeds_nations` organization attributes without a role allowlist, so `COORDINATING_NDSF` needs no separate realm-role registration.
+
 Local Keycloak bootstrap creates the `ceeds-directory` service account. For Helm, add `directory-client-secret` to the existing `keycloak-secret` before upgrading. The chart passes this secret to Keycloak and backend and provisions `view-organizations` on the service account. Existing realms are updated by the bootstrap job. Keycloak 26.7.4 is required for this narrow read permission.
 
 ## Tests

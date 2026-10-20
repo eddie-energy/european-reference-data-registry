@@ -3,6 +3,7 @@ package energy.eddie.s3.config;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -65,6 +66,16 @@ class CoordinatorAuthorizationTest {
     }
 
     @Test
+    void missingNationIsRejectedBeforeServiceAccess() throws Exception {
+        mvc.perform(post("/api/reference-data-objects/{id}/responsibilities", objectId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer coordinator")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"organizationId\":\"" + organizationId + "\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(responsibilities, objects, directory);
+    }
+
+    @Test
     void currentUserExposesOnlyCoordinatingMembershipNationsAsCoordinatingScope() throws Exception {
         mvc.perform(get("/api/me").header(HttpHeaders.AUTHORIZATION, "Bearer coordinator"))
                 .andExpect(status().isOk())
@@ -74,20 +85,36 @@ class CoordinatorAuthorizationTest {
                 .andExpect(jsonPath("$.roles", org.hamcrest.Matchers.hasItems("NDSF", "COORDINATING_NDSF")));
     }
 
-    @Test
-    void coordinatorCanAssignItsNationThroughAuthenticatedApi() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void coordinatorCanAssignItsNationToOwnOrOtherOrganization(boolean ownOrganization) throws Exception {
+        var targetId = ownOrganization ? organizationId : ordinaryOrganizationId;
         var object = new ReferenceDataObject("Permissions", "description");
         ReflectionTestUtils.setField(object, "id", objectId);
         when(objects.findById(objectId)).thenReturn(Optional.of(object));
-        when(directory.isEligible(organizationId)).thenReturn(true);
+        when(directory.isEligible(targetId)).thenReturn(true);
         when(responsibilities.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
 
         mvc.perform(post("/api/reference-data-objects/{id}/responsibilities", objectId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer coordinator")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"organizationId\":\"" + organizationId + "\",\"nation\":\"AUT\"}"))
+                        .content("{\"organizationId\":\"" + targetId + "\",\"nation\":\"AUT\"}"))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.organizationId").value(targetId.toString()))
                 .andExpect(jsonPath("$.nation").value("AUT"));
+    }
+
+    @Test
+    void coordinatorCanRemoveVisibleResponsibilityOfAnotherOrganization() throws Exception {
+        when(objects.existsById(objectId)).thenReturn(true);
+        when(responsibilities.existsByReferenceDataObjectIdAndOrganizationIdAndNation(
+                objectId, ordinaryOrganizationId, Nation.AUT)).thenReturn(true);
+
+        mvc.perform(delete("/api/reference-data-objects/{id}/responsibilities/{org}/AUT", objectId, ordinaryOrganizationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer coordinator"))
+                .andExpect(status().isNoContent());
+        verify(responsibilities).deleteByReferenceDataObjectIdAndOrganizationIdAndNation(
+                objectId, ordinaryOrganizationId, Nation.AUT);
     }
 
     @Test

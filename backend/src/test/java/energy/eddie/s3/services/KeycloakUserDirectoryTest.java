@@ -63,9 +63,21 @@ class KeycloakUserDirectoryTest {
                         + "{\"id\":\"" + UUID.randomUUID() + "\",\"alias\":\"off\",\"name\":\"Off\",\"enabled\":false}]")));
 
         assertThat(directory.listOrganizationDetails()).singleElement().satisfies(organization -> {
-            assertThat(organization.role()).isEqualTo(CeedsRole.NDSF);
+            assertThat(organization.roles()).containsExactly(CeedsRole.NDSF);
             assertThat(organization.nations()).containsExactly(Nation.AUT, Nation.GER);
         });
+    }
+
+    @Test
+    void listsAllRolesOfMixedOrganizations() throws IOException {
+        var id = UUID.randomUUID();
+        var directory = directory(http -> http.createContext("/admin/realms/ceeds/organizations", exchange -> respond(
+                exchange, 200,
+                "[{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
+                        + "\"attributes\":{\"ceeds_role\":[\"NDSF\",\"OPERATIONAL_ENTITY\"],\"ceeds_nations\":[\"AUT\"]}}]")));
+
+        var organization = new ObjectMapper().valueToTree(directory.listOrganizationDetails().getFirst());
+        assertThat(organization.path("roles").toString()).isEqualTo("[\"NDSF\",\"OPERATIONAL_ENTITY\"]");
     }
 
     @Test
@@ -77,7 +89,7 @@ class KeycloakUserDirectoryTest {
                         + "\"attributes\":{\"ceeds_role\":[\"NDSF\",\"COORDINATING_NDSF\"],\"ceeds_nations\":[\"AUT\"]}}]")));
 
         assertThat(directory.listOrganizationDetails()).singleElement().satisfies(organization -> {
-            assertThat(organization.role()).isEqualTo(CeedsRole.COORDINATING_NDSF);
+            assertThat(organization.roles()).containsExactly(CeedsRole.NDSF, CeedsRole.COORDINATING_NDSF);
             assertThat(organization.nations()).containsExactly(Nation.AUT);
         });
     }
@@ -95,11 +107,11 @@ class KeycloakUserDirectoryTest {
             }
         }));
 
-        directory.updateOrganization(id, CeedsRole.NDSF, List.of(Nation.FRA, Nation.ESP));
+        directory.updateOrganization(id, List.of(CeedsRole.NDSF, CeedsRole.OPERATIONAL_ENTITY), List.of(Nation.FRA, Nation.ESP));
 
         assertThat(written.get())
                 .contains("\"alias\":\"eda\"")
-                .contains("\"ceeds_role\":[\"NDSF\"]")
+                .contains("\"ceeds_role\":[\"NDSF\",\"OPERATIONAL_ENTITY\"]")
                 .contains("\"ceeds_nations\":[\"FRA\",\"ESP\"]");
     }
 
@@ -130,7 +142,7 @@ class KeycloakUserDirectoryTest {
             respond(exchange, 201, "");
         }));
 
-        var organization = directory.createOrganization("Agency", "agency", CeedsRole.NDSF, List.of(Nation.AUT));
+        var organization = directory.createOrganization("Agency", "agency", List.of(CeedsRole.NDSF), List.of(Nation.AUT));
 
         assertThat(organization.id()).isEqualTo(id);
         assertThat(written.get())

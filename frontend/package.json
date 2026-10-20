@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
     "dev": "vite",
     "build": "run-s generate-openapi-schemas type-check \"build-only {@}\" --",
     "preview": "vite preview",

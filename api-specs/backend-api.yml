@@ -870,7 +870,8 @@ components:
 
     CreateOrganizationRequest:
       type: object
-      required: [ name, role ]
+      required: [ name ]
+      description: Provide roles, or the legacy single role. At least one role is required.
       properties:
         name:
           type: string
@@ -878,6 +879,12 @@ components:
           maxLength: 255
         role:
           $ref: '#/components/schemas/OrganizationRole'
+        roles:
+          type: array
+          uniqueItems: true
+          description: All CEEDS roles assigned to the organization
+          items:
+            $ref: '#/components/schemas/OrganizationRole'
         nations:
           type: array
           description: Used for NDSF and COORDINATING_NDSF roles
@@ -896,7 +903,7 @@ components:
 
     ManagedOrganizationDto:
       type: object
-      required: [ id, alias, name, editable, nations, responsibilities ]
+      required: [ id, alias, name, editable, roles, nations, responsibilities ]
       properties:
         id:
           type: string
@@ -912,6 +919,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/OrganizationRole'
           nullable: true
+          description: Legacy single-role representation; null when the organization has multiple roles
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OrganizationRole'
         nations:
           type: array
           items:
@@ -923,10 +936,15 @@ components:
 
     UpdateOrganizationRequest:
       type: object
-      required: [ role ]
+      description: Provide roles, or the legacy single role. Responsibilities are retained while any NDSF role remains.
       properties:
         role:
           $ref: '#/components/schemas/OrganizationRole'
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OrganizationRole'
         nations:
           type: array
           description: Used for NDSF and COORDINATING_NDSF roles

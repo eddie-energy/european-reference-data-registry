@@ -8,6 +8,7 @@ import { coordinatingNdsfNations, mayManageResponsibilities, userRole } from '@/
 import { nations } from '@/constants/nations'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
+import { organizationRoleLabels } from '@/constants/organizationRoles'
 
 type Nation = components['schemas']['Nation']
 type Role = components['schemas']['OrganizationRole']
@@ -18,7 +19,8 @@ const { organization } = defineProps<{
 
 const emit = defineEmits<{ changed: []; close: [] }>()
 
-const role = ref<Role>(organization.role ?? 'NDSF')
+const roles = ref<Role[]>([...organization.roles])
+const hasNdsfRole = computed(() => roles.value.some((role) => role !== 'OPERATIONAL_ENTITY'))
 const selectedNations = ref<Nation[]>([...organization.nations])
 const newObjectId = ref(referenceDataObjects.value?.[0]?.id ?? '')
 const nationOptions = computed(() =>
@@ -32,9 +34,7 @@ const errorMessage = ref('')
 const { confirm } = useConfirmDialog()
 const { success } = useToast()
 
-const isNdsf = computed(
-  () => organization.role === 'NDSF' || organization.role === 'COORDINATING_NDSF',
-)
+const isNdsf = computed(() => organization.roles.some((role) => role !== 'OPERATIONAL_ENTITY'))
 const mayEditSettings = computed(
   () => userRole.value === 'operationalEntity' && organization.editable,
 )
@@ -78,8 +78,8 @@ const save = async () => {
     async () =>
       (
         await updateOrganization(organization.id, {
-          role: role.value,
-          nations: role.value !== 'OPERATIONAL_ENTITY' ? selectedNations.value : [],
+          roles: roles.value,
+          nations: hasNdsfRole.value ? selectedNations.value : [],
         })
       ).error,
     'Organization updated',
@@ -124,15 +124,14 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
 <template>
   <div class="organization-edit">
     <form v-if="mayEditSettings" id="organization-form" class="section" @submit.prevent="save">
-      <label>
-        Role
-        <select v-model="role">
-          <option value="NDSF">NDSF</option>
-          <option value="COORDINATING_NDSF">Coordinating NDSF</option>
-          <option value="OPERATIONAL_ENTITY">Operational Entity</option>
-        </select>
-      </label>
-      <fieldset v-if="role !== 'OPERATIONAL_ENTITY'">
+      <fieldset>
+        <legend>Roles</legend>
+        <label v-for="(label, role) in organizationRoleLabels" :key="role" class="check">
+          <input v-model="roles" type="checkbox" :value="role" />
+          {{ label }}
+        </label>
+      </fieldset>
+      <fieldset v-if="hasNdsfRole">
         <legend>Nations</legend>
         <label v-for="nation in nations" :key="nation.value" class="check">
           <input v-model="selectedNations" type="checkbox" :value="nation.value" />
@@ -140,10 +139,12 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
         </label>
       </fieldset>
       <p v-else-if="organization.responsibilities.length" class="hint">
-        Saving as Operational Entity removes this organization's responsibilities.
+        Removing all NDSF roles removes this organization's responsibilities.
       </p>
       <div class="actions">
-        <ButtonLink type="submit" button-style="primary" :disabled="saving">Save</ButtonLink>
+        <ButtonLink type="submit" button-style="primary" :disabled="saving || !roles.length"
+          >Save</ButtonLink
+        >
         <ButtonLink
           type="button"
           button-style="secondary"
