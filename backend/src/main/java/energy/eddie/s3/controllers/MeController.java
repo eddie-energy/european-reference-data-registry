@@ -32,6 +32,9 @@ public class MeController implements MeApi {
                 .ndsfNations(currentUser.ndsfNations().stream()
                         .map(nation -> Nation.fromValue(nation.name()))
                         .toList())
+                .coordinatingNdsfNations(currentUser.coordinatingNdsfNations().stream()
+                        .map(nation -> Nation.fromValue(nation.name()))
+                        .toList())
                 .organizations(currentUser.organizations());
         return ResponseEntity.ok(dto);
     }

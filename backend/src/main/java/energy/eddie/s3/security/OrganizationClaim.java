@@ -45,7 +45,7 @@ public final class OrganizationClaim {
             CeedsRole.assignable(value).ifPresent(roles::add);
         }
         Set<Nation> nations = new LinkedHashSet<>();
-        if (roles.contains(CeedsRole.NDSF)) {
+        if (roles.stream().anyMatch(CeedsRole::isNdsf)) {
             for (var value : values(map.get(NATIONS_ATTRIBUTE))) {
                 nation(value).ifPresent(nations::add);
             }

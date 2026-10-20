@@ -17,3 +17,10 @@ tasks.register<PnpmTask>("build") {
     pnpmCommand.set(listOf("run", "build"))
     environment = System.getenv()
 }
+
+tasks.register<PnpmTask>("test") {
+    group = "verification"
+    description = "Runs frontend behavior tests"
+    dependsOn("pnpmInstall")
+    pnpmCommand.set(listOf("run", "test"))
+}

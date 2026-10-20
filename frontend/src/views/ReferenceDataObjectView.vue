@@ -2,7 +2,7 @@
 import { referenceDataObject, updateReferenceDataObject } from '@/stores/referenceDataObject'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { maintainableNations, userRole } from '@/stores/userInfo'
+import { isNdsf, maintainableNations, userRole } from '@/stores/userInfo'
 import ReferenceDataEntryTable from '@/components/ReferenceDataEntryTable.vue'
 import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
 import { functionalBuildingBlockLabels } from '@/constants/functionalBuildingBlocks'
@@ -41,8 +41,7 @@ const currentObject = computed(() =>
 
 const mayEditVersions = computed(
   () =>
-    userRole.value === 'operationalEntity' ||
-    (userRole.value === 'ndsf' && maintainableNations(id).length > 0),
+    userRole.value === 'operationalEntity' || (isNdsf.value && maintainableNations(id).length > 0),
 )
 
 const visibleVersions = computed(() => {
@@ -169,7 +168,7 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
           :editable="
             isLatestBrowseVersion &&
             (userRole === 'operationalEntity' ||
-              (userRole === 'ndsf' &&
+              (isNdsf &&
                 maintainableNations(id).length > 0 &&
                 browseVersion.publishState === 'PUBLISHED'))
           "

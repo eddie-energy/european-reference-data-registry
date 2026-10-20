@@ -63,7 +63,12 @@ public class SecurityConfig {
         return http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/management/**", "/api/reference-data-objects/*/responsibilities/**", "/api/reference-data-objects/*/responsibilities")
+                .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.GET,
+                                "/api/management/organizations", "/api/management/all-organizations")
+                        .hasAnyRole(CeedsRole.OPERATIONAL_ENTITY.name(), CeedsRole.COORDINATING_NDSF.name())
+                        .requestMatchers("/api/reference-data-objects/*/responsibilities/**", "/api/reference-data-objects/*/responsibilities")
+                        .hasAnyRole(CeedsRole.OPERATIONAL_ENTITY.name(), CeedsRole.COORDINATING_NDSF.name())
+                        .requestMatchers("/api/management/**")
                         .hasRole(CeedsRole.OPERATIONAL_ENTITY.name())
                         .requestMatchers(HttpMethod.GET, REFERENCE_DATA_PATHS)
                         .permitAll()

@@ -12,6 +12,7 @@ import energy.eddie.s3.generated.model.UpdateOrganizationRequest;
 import energy.eddie.s3.models.referencedata.Responsibility;
 import energy.eddie.s3.repositories.ResponsibilityRepository;
 import energy.eddie.s3.security.CeedsRole;
+import energy.eddie.s3.security.CurrentUser;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Locale;
@@ -27,18 +28,26 @@ public class OrganizationManagementService {
 
     private final KeycloakUserDirectory directory;
     private final ResponsibilityRepository responsibilities;
+    private final CurrentUser currentUser;
 
-    public OrganizationManagementService(KeycloakUserDirectory directory, ResponsibilityRepository responsibilities) {
+    public OrganizationManagementService(KeycloakUserDirectory directory, ResponsibilityRepository responsibilities,
+                                         CurrentUser currentUser) {
         this.directory = directory;
         this.responsibilities = responsibilities;
+        this.currentUser = currentUser;
     }
 
     @Transactional(readOnly = true)
     public List<ManagedOrganizationDto> list() {
-        var organizations = directory.listOrganizationDetails();
+        var organizations = directory.listOrganizationDetails().stream()
+                .filter(organization -> currentUser.isOperationalEntity()
+                        || (organization.role() != null && organization.role().isNdsf()))
+                .toList();
         Set<UUID> ids = organizations.stream().map(KeycloakUserDirectory.KeycloakOrganization::id)
                 .collect(Collectors.toSet());
         var held = responsibilities.findByOrganizationIdIn(ids).stream()
+                .filter(item -> currentUser.isOperationalEntity()
+                        || currentUser.mayManageResponsibilitiesFor(item.getNation()))
                 .collect(Collectors.groupingBy(Responsibility::getOrganizationId,
                         Collectors.mapping(OrganizationManagementService::toDto, Collectors.toList())));
         return organizations.stream()
@@ -66,7 +75,7 @@ public class OrganizationManagementService {
         var role = toRole(request.getRole());
         var nations = nationsFor(role, request.getNations());
         directory.updateOrganization(organizationId, role, nations);
-        if (role != CeedsRole.NDSF) {
+        if (!role.isNdsf()) {
             responsibilities.deleteByOrganizationId(organizationId);
         }
         var held = responsibilities.findByOrganizationIdIn(Set.of(organizationId)).stream()
@@ -85,16 +94,17 @@ public class OrganizationManagementService {
     }
 
     private static List<Nation> nationsFor(CeedsRole role, @Nullable List<Nation> nations) {
-        return role == CeedsRole.NDSF && nations != null ? nations.stream().distinct().toList() : List.of();
+        return role.isNdsf() && nations != null ? nations.stream().distinct().toList() : List.of();
     }
 
-    private static ManagedOrganizationDto toDto(
+    private ManagedOrganizationDto toDto(
             KeycloakUserDirectory.KeycloakOrganization organization, List<OrganizationResponsibilityDto> held) {
         return new ManagedOrganizationDto()
                 .id(organization.id())
                 .alias(organization.alias())
                 .name(organization.name())
-                .editable(!PROTECTED_ORGANIZATION_ALIASES.contains(organization.alias()))
+                .editable(currentUser.isOperationalEntity()
+                        && !PROTECTED_ORGANIZATION_ALIASES.contains(organization.alias()))
                 .role(organization.role() == null ? null : OrganizationRole.fromValue(organization.role().name()))
                 .nations(organization.nations())
                 .responsibilities(held);

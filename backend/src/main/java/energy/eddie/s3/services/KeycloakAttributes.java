@@ -42,7 +42,7 @@ final class KeycloakAttributes {
         return values(organization.path(ATTRIBUTES).path(ROLE)).stream()
                 .map(CeedsRole::assignable)
                 .flatMap(java.util.Optional::stream)
-                .findFirst()
+                .max(java.util.Comparator.naturalOrder())
                 .orElse(null);
     }
 }

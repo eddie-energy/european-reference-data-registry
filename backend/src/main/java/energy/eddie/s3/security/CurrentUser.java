@@ -22,7 +22,7 @@ public class CurrentUser {
         }
         var granted = EnumSet.of(CeedsRole.PARTICIPANT);
         Arrays.stream(CeedsRole.values())
-                .filter(role -> role == CeedsRole.NDSF || role == CeedsRole.OPERATIONAL_ENTITY)
+                .filter(role -> role.isNdsf() || role == CeedsRole.OPERATIONAL_ENTITY)
                 .filter(role -> hasAuthority(role.authority()))
                 .forEach(granted::add);
         return granted;
@@ -35,6 +35,24 @@ public class CurrentUser {
     public boolean isNdsfFor(@Nullable Nation nation) {
         return nation != null
                 && hasAuthority(OrganizationRolesConverter.NDSF_NATION_AUTHORITY_PREFIX + nation.name());
+    }
+
+    public boolean isCoordinatingNdsf() {
+        return hasAuthority(CeedsRole.COORDINATING_NDSF.authority());
+    }
+
+    public boolean mayManageResponsibilitiesFor(@Nullable Nation nation) {
+        return isOperationalEntity() || (isCoordinatingNdsf() && nation != null
+                && hasAuthority(OrganizationRolesConverter.COORDINATING_NDSF_NATION_AUTHORITY_PREFIX + nation.name()));
+    }
+
+    public Set<Nation> coordinatingNdsfNations() {
+        var nations = EnumSet.noneOf(Nation.class);
+        Arrays.stream(Nation.values())
+                .filter(nation -> isCoordinatingNdsf() && hasAuthority(
+                        OrganizationRolesConverter.COORDINATING_NDSF_NATION_AUTHORITY_PREFIX + nation.name()))
+                .forEach(nations::add);
+        return nations;
     }
 
     public boolean isNdsf() {
@@ -63,7 +81,7 @@ public class CurrentUser {
     public Set<UUID> ndsfOrganizationIds() {
         return token()
                 .map(token -> OrganizationClaim.read(token.getToken()).stream()
-                        .filter(membership -> membership.roles().contains(CeedsRole.NDSF))
+                        .filter(membership -> membership.roles().stream().anyMatch(CeedsRole::isNdsf))
                         .map(OrganizationMembership::id)
                         .filter(java.util.Objects::nonNull)
                         .collect(java.util.stream.Collectors.toSet()))

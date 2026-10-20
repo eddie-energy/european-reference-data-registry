@@ -121,6 +121,7 @@ val integrationTest = tasks.register<Test>("integrationTest") {
 
 tasks.check {
     dependsOn(integrationTest)
+    dependsOn(":frontend:test")
 }
 
 tasks.jacocoTestReport {

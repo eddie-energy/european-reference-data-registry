@@ -96,6 +96,20 @@ class OrganizationClaimTest {
     }
 
     @Test
+    void coordinatorInheritsNdsfButOnlyCoordinatesItsOwnMembershipNations() {
+        var jwt = jwtWith(Map.of(
+                "coordinator", Map.of("ceeds_role", "COORDINATING_NDSF", "ceeds_nations", List.of("AUT", "ATLANTIS")),
+                "ordinary", Map.of("ceeds_role", "NDSF", "ceeds_nations", "GER"),
+                "second", Map.of("ceeds_role", "COORDINATING_NDSF", "ceeds_nations", "FRA")));
+        var authorities = new OrganizationRolesConverter().convert(jwt).getAuthorities().stream()
+                .map(Object::toString).toList();
+        assertThat(authorities).containsExactlyInAnyOrder(
+                "ROLE_PARTICIPANT", "ROLE_NDSF", "ROLE_COORDINATING_NDSF",
+                "NDSF_NATION_AUT", "NDSF_NATION_GER", "NDSF_NATION_FRA",
+                "COORDINATING_NDSF_NATION_AUT", "COORDINATING_NDSF_NATION_FRA");
+    }
+
+    @Test
     void everyTokenGrantsParticipant() {
         var authorities = new OrganizationRolesConverter().convert(jwtWith(null)).getAuthorities().stream()
                 .map(Object::toString)

@@ -25,8 +25,9 @@ class KeycloakOrganizationDirectoryTest {
         }
     }
 
-    @Test
-    void listsOnlyNdsfOrganizationsWithKeycloakNations() throws IOException {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"NDSF", "COORDINATING_NDSF"})
+    void listsOnlyNdsfOrganizationsWithKeycloakNations(String role) throws IOException {
         var id = UUID.randomUUID();
         server = HttpServer.create(new InetSocketAddress(java.net.InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/token", exchange -> respond(exchange, 200, "{\"access_token\":\"test\"}"));
@@ -34,14 +35,14 @@ class KeycloakOrganizationDirectoryTest {
                 exchange,
                 200,
                 "[{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
-                        + "\"attributes\":{\"ceeds_role\":[\"NDSF\"],\"ceeds_nations\":[\"GER\"]}},"
+                        + "\"attributes\":{\"ceeds_role\":[\"" + role + "\"],\"ceeds_nations\":[\"GER\"]}},"
                         + "{\"id\":\"" + UUID.randomUUID() + "\",\"alias\":\"op\",\"name\":\"OP\","
                         + "\"attributes\":{\"ceeds_role\":[\"OPERATIONAL_ENTITY\"]}}]"));
         server.createContext("/admin/realms/ceeds/organizations/" + id, exchange -> respond(
                 exchange,
                 200,
                 "{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
-                        + "\"attributes\":{\"ceeds_role\":[\"NDSF\"],\"ceeds_nations\":[\"GER\"]}}"));
+                        + "\"attributes\":{\"ceeds_role\":[\"" + role + "\"],\"ceeds_nations\":[\"GER\"]}}"));
         server.start();
         var base = "http://127.0.0.1:" + server.getAddress().getPort();
         var directory = new KeycloakOrganizationDirectory(new KeycloakAdminClient(

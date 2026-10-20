@@ -27,7 +27,7 @@ const submit = async () => {
     const { data, error } = await createOrganization({
       name: name.value.trim(),
       role: role.value,
-      nations: role.value === 'NDSF' ? selectedNations.value : [],
+      nations: role.value !== 'OPERATIONAL_ENTITY' ? selectedNations.value : [],
     })
     if (!data) {
       errorMessage.value = error?.message ?? 'Failed to create organization'
@@ -53,10 +53,11 @@ const submit = async () => {
       Role
       <select v-model="role">
         <option value="NDSF">NDSF</option>
+        <option value="COORDINATING_NDSF">Coordinating NDSF</option>
         <option value="OPERATIONAL_ENTITY">Operational Entity</option>
       </select>
     </label>
-    <fieldset v-if="role === 'NDSF'">
+    <fieldset v-if="role !== 'OPERATIONAL_ENTITY'">
       <legend>Nations</legend>
       <label v-for="nation in nations" :key="nation.value" class="check">
         <input v-model="selectedNations" type="checkbox" :value="nation.value" />

@@ -16,6 +16,7 @@ import {
 } from '@/stores/managementOrganizations'
 import { updateManagementUsers } from '@/stores/managementUsers'
 import { referenceDataObjects } from '@/stores/referenceDataObject'
+import { mayManageResponsibilities, userRole } from '@/stores/userInfo'
 import ModalDialog from '@/components/ModalDialog.vue'
 import OrganizationCreateForm from '@/components/OrganizationCreateForm.vue'
 import OrganizationEditForm from '@/components/OrganizationEditForm.vue'
@@ -37,6 +38,7 @@ const editingOrganization = computed(() =>
 
 const roleLabels: Record<components['schemas']['OrganizationRole'], string> = {
   NDSF: 'NDSF',
+  COORDINATING_NDSF: 'Coordinating NDSF',
   OPERATIONAL_ENTITY: 'Operational Entity',
 }
 
@@ -49,7 +51,7 @@ const objectName = (id: string) =>
 const refresh = async () => {
   const [organizations] = await Promise.all([
     updateManagementOrganizations(),
-    updateManagementUsers(),
+    ...(userRole.value === 'operationalEntity' ? [updateManagementUsers()] : []),
   ])
   errorMessage.value = organizations.error?.message ?? ''
 }
@@ -119,7 +121,7 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
     header: 'Edit',
     enableSorting: false,
     cell: (ctx) =>
-      ctx.row.original.editable
+      ctx.row.original.editable || mayManageResponsibilities.value
         ? h(
             ButtonLink,
             {
@@ -129,7 +131,7 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
               size: 'compact',
               onClick: () => openEdit(ctx.row.original.id),
             },
-            () => 'Edit',
+            () => (ctx.row.original.editable ? 'Edit' : 'Responsibilities'),
           )
         : h('span', { class: 'none' }, 'Protected'),
   }),
@@ -170,8 +172,8 @@ const table = useVueTable({
 <template>
   <section
     id="panel-organizations"
-    role="tabpanel"
-    aria-labelledby="tab-organizations"
+    role="region"
+    aria-label="Organizations and responsibilities"
     class="panel"
   >
     <div class="toolbar">
@@ -181,7 +183,13 @@ const table = useVueTable({
         placeholder="Search by name, role or nation"
         aria-label="Search organizations"
       />
-      <ButtonLink type="button" button-style="primary" size="compact" @click="openCreate">
+      <ButtonLink
+        v-if="userRole === 'operationalEntity'"
+        type="button"
+        button-style="primary"
+        size="compact"
+        @click="openCreate"
+      >
         Create organization
       </ButtonLink>
     </div>
@@ -193,13 +201,18 @@ const table = useVueTable({
     />
     <p v-if="errorMessage" role="alert" class="error">{{ errorMessage }}</p>
 
-    <ModalDialog ref="createDialog" title="Create organization" size="large">
+    <ModalDialog
+      v-if="userRole === 'operationalEntity'"
+      ref="createDialog"
+      title="Create organization"
+      size="large"
+    >
       <OrganizationCreateForm :key="formKey" @created="created" />
     </ModalDialog>
 
     <ModalDialog
       ref="editDialog"
-      :title="`Edit ${editingOrganization?.name ?? 'organization'}`"
+      :title="`${editingOrganization?.editable ? 'Edit' : 'Responsibilities for'} ${editingOrganization?.name ?? 'organization'}`"
       size="large"
     >
       <OrganizationEditForm

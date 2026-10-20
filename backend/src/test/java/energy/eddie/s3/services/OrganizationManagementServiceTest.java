@@ -33,9 +33,55 @@ import org.springframework.test.util.ReflectionTestUtils;
 class OrganizationManagementServiceTest {
     @Mock KeycloakUserDirectory directory;
     @Mock ResponsibilityRepository responsibilities;
+    @Mock energy.eddie.s3.security.CurrentUser currentUser;
     @InjectMocks OrganizationManagementService service;
 
+    @org.junit.jupiter.api.BeforeEach
+    void operationalEntity() {
+        org.mockito.Mockito.lenient().when(currentUser.isOperationalEntity()).thenReturn(true);
+    }
+
     private final UUID organizationId = UUID.randomUUID();
+
+    @Test
+    void coordinatorOrganizationListFiltersForeignResponsibilitiesAndDisablesSettings() {
+        when(currentUser.isOperationalEntity()).thenReturn(false);
+        when(currentUser.mayManageResponsibilitiesFor(energy.eddie.s3.models.referencedata.Nation.AUT)).thenReturn(true);
+        var object = new ReferenceDataObject("Permissions", "description");
+        ReflectionTestUtils.setField(object, "id", UUID.randomUUID());
+        when(directory.listOrganizationDetails()).thenReturn(List.of(
+                organization("eda", CeedsRole.NDSF, Nation.GER),
+                organization("ops", CeedsRole.OPERATIONAL_ENTITY)));
+        when(responsibilities.findByOrganizationIdIn(any())).thenReturn(List.of(
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.AUT),
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+        var result = service.list();
+        assertThat(result).singleElement().satisfies(org -> {
+            assertThat(org.getEditable()).isFalse();
+            assertThat(org.getResponsibilities()).extracting(item -> item.getNation()).containsExactly(Nation.AUT);
+        });
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = OrganizationRole.class, names = {"NDSF", "COORDINATING_NDSF"})
+    void ndsfRoleChangesKeepNationsAndResponsibilities(OrganizationRole role) {
+        when(directory.findOrganization(organizationId)).thenReturn(Optional.of(organization("eda", CeedsRole.NDSF, Nation.AUT)));
+        var object = new ReferenceDataObject("Permissions", "description");
+        var objectId = UUID.randomUUID();
+        ReflectionTestUtils.setField(object, "id", objectId);
+        when(responsibilities.findByOrganizationIdIn(Set.of(organizationId))).thenReturn(List.of(
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+        var result = service.update(organizationId, new UpdateOrganizationRequest()
+                .role(role)
+                .nations(List.of(Nation.AUT)));
+        assertThat(result.getNations()).containsExactly(Nation.AUT);
+        assertThat(result.getRole()).isEqualTo(role);
+        assertThat(result.getResponsibilities()).singleElement().satisfies(item -> {
+            assertThat(item.getReferenceDataObjectId()).isEqualTo(objectId);
+            assertThat(item.getNation()).isEqualTo(Nation.GER);
+        });
+        verify(responsibilities, never()).deleteByOrganizationId(any());
+    }
 
     @Test
     void listIncludesRoleNationsAndResponsibilities() {
@@ -60,17 +106,20 @@ class OrganizationManagementServiceTest {
         assertThat(result.get(1).getEditable()).isFalse();
     }
 
-    @Test
-    void createDerivesAliasAndKeepsNationsForNdsf() {
-        when(directory.createOrganization("Energy Agency GmbH", "energy-agency-gmbh", CeedsRole.NDSF, List.of(Nation.AUT, Nation.FRA)))
-                .thenReturn(organization("energy-agency-gmbh", CeedsRole.NDSF, Nation.AUT, Nation.FRA));
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = OrganizationRole.class, names = {"NDSF", "COORDINATING_NDSF"})
+    void createDerivesAliasAndKeepsNationsForNdsf(OrganizationRole role) {
+        var domainRole = CeedsRole.valueOf(role.name());
+        when(directory.createOrganization("Energy Agency GmbH", "energy-agency-gmbh", domainRole, List.of(Nation.AUT, Nation.FRA)))
+                .thenReturn(organization("energy-agency-gmbh", domainRole, Nation.AUT, Nation.FRA));
 
         var result = service.create(new CreateOrganizationRequest()
                 .name(" Energy Agency GmbH ")
-                .role(OrganizationRole.NDSF)
+                .role(role)
                 .nations(List.of(Nation.AUT, Nation.AUT, Nation.FRA)));
 
         assertThat(result.getNations()).containsExactly(Nation.AUT, Nation.FRA);
+        assertThat(result.getRole()).isEqualTo(role);
     }
 
     @Test

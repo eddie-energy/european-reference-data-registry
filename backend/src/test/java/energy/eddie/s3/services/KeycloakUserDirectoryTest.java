@@ -69,6 +69,20 @@ class KeycloakUserDirectoryTest {
     }
 
     @Test
+    void additionalCoordinatingRoleIsNotLostWhenNdsfAppearsFirst() throws IOException {
+        var id = UUID.randomUUID();
+        var directory = directory(http -> http.createContext("/admin/realms/ceeds/organizations", exchange -> respond(
+                exchange, 200,
+                "[{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
+                        + "\"attributes\":{\"ceeds_role\":[\"NDSF\",\"COORDINATING_NDSF\"],\"ceeds_nations\":[\"AUT\"]}}]")));
+
+        assertThat(directory.listOrganizationDetails()).singleElement().satisfies(organization -> {
+            assertThat(organization.role()).isEqualTo(CeedsRole.COORDINATING_NDSF);
+            assertThat(organization.nations()).containsExactly(Nation.AUT);
+        });
+    }
+
+    @Test
     void updateOrganizationWritesRoleAndNationsAndKeepsOtherFields() throws IOException {
         var id = UUID.randomUUID();
         var written = new AtomicReference<String>();
