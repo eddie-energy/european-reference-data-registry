@@ -6,17 +6,25 @@ import UserManagementView from '@/views/UserManagementView.vue'
 import ResponsibilityManagementView from '@/views/ResponsibilityManagementView.vue'
 import { mayManageResponsibilities, userRole } from '@/stores/userInfo'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    title?: string
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
       name: 'dashboard',
+      meta: { title: 'Dashboard' },
       component: DashboardView,
     },
     {
       path: '/management/responsibilities',
       name: 'responsibility-management',
+      meta: { title: 'Responsibilities' },
       component: ResponsibilityManagementView,
       beforeEnter: () => {
         if (!mayManageResponsibilities.value) return { name: 'dashboard' }
@@ -25,6 +33,7 @@ const router = createRouter({
     {
       path: '/management/users',
       name: 'user-management',
+      meta: { title: 'Users' },
       component: UserManagementView,
       beforeEnter: () => {
         if (userRole.value !== 'operationalEntity') {
@@ -35,6 +44,7 @@ const router = createRouter({
     {
       path: '/reference-data-objects/create',
       name: 'reference-data-object-create',
+      meta: { title: 'Create Reference Data Object' },
       component: CreateReferenceDataObjectView,
       beforeEnter: () => {
         if (userRole.value !== 'operationalEntity') {
