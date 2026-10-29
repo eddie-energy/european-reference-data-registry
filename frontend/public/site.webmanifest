@@ -1,0 +1,14 @@
+{
+  "name": "Insieme CEEDS Reference Data",
+  "short_name": "CEEDS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6c6fa9",
+  "icons": [
+    { "src": "/insieme_logo_icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/insieme_logo_icon_32x32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/insieme_logo_icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

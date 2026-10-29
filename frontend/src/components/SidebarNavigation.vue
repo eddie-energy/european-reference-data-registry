@@ -21,7 +21,7 @@ const roleLabel = computed(() => ROLE_LABELS[userRole.value])
 <template>
   <aside class="sidebar-nav">
     <RouterLink to="/" class="logo">
-      <img src="/INSIEME_Logo.png" alt="logo" />
+      <img src="/insieme_logo.svg" alt="logo" />
     </RouterLink>
 
     <nav>
@@ -69,7 +69,7 @@ const roleLabel = computed(() => ROLE_LABELS[userRole.value])
 
 .logo img {
   display: block;
-  height: 2.25rem;
+  height: 3.25rem;
 }
 
 nav {

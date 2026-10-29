@@ -39,8 +39,10 @@ public class SecurityConfig {
     private static final String[] PUBLIC_PATHS = {
         "/",
         "/index.html",
-        "/favicon.svg",
-        "/INSIEME_Logo.png",
+        "/insieme_logo_icon*",
+        "/site.webmanifest",
+        "/og-image.png",
+        "/insieme_logo.svg",
         "/assets/**",
         "/swagger-ui.html",
         "/swagger-ui/**",

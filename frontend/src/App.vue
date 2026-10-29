@@ -1,8 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useHead } from '@unhead/vue'
 import AlertToastList from './components/AlertToastList.vue'
+import AppFooter from './components/AppFooter.vue'
 import BetaBanner from './components/BetaBanner.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import SidebarNavigation from './components/SidebarNavigation.vue'
+
+const route = useRoute()
+
+useHead({
+  titleTemplate: (title) => (title ? `${title} | CEEDS Reference Data` : 'CEEDS Reference Data'),
+})
+useHead(computed(() => (route.meta.title ? { title: route.meta.title } : {})))
 </script>
 
 <template>
@@ -16,6 +27,7 @@ import SidebarNavigation from './components/SidebarNavigation.vue'
         <component :is="Component" />
       </Transition>
     </RouterView>
+    <AppFooter />
   </div>
 </template>
 
@@ -33,6 +45,7 @@ import SidebarNavigation from './components/SidebarNavigation.vue'
 .content-grid {
   display: grid;
   grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr auto;
 }
 
 .main-default {

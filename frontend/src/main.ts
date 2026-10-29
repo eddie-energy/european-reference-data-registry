@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createHead } from '@unhead/vue/client'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
@@ -32,6 +33,7 @@ try {
   const { error: userInfoError } = await updateUserInfo()
   const { error: referenceDataError } = await updateReferenceDataObjects()
 
+  app.use(createHead())
   app.use(router)
 
   if (userInfoError) {

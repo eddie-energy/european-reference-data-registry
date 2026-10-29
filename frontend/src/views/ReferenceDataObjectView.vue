@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useHead } from '@unhead/vue'
 import { referenceDataObject, updateReferenceDataObject } from '@/stores/referenceDataObject'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -38,6 +39,8 @@ watch(() => id, load)
 const currentObject = computed(() =>
   referenceDataObject.value?.id === id ? referenceDataObject.value : undefined,
 )
+
+useHead({ title: () => currentObject.value?.name })
 
 const mayEditVersions = computed(
   () =>
