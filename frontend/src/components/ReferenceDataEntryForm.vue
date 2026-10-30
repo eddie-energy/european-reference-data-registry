@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
+import CustomSelect from './CustomSelect.vue'
 import { nations } from '@/constants/nations'
 import { maintainableNations, userRole } from '@/stores/userInfo'
 
@@ -38,6 +39,11 @@ const nationOptions = computed(() =>
     ? nations
     : nations.filter((option) => maintainableNations(objectId).includes(option.value)),
 )
+
+const nationSelectOptions = computed(() => [
+  ...(mayOmitNation.value ? [{ value: '', label: 'All countries' }] : []),
+  ...nationOptions.value,
+])
 
 const visibleFields = computed(() =>
   fields.filter((field) => !field.nation || field.nation === nation.value),
@@ -106,18 +112,7 @@ const submit = () => {
     <label>
       Country
       <span v-if="!mayOmitNation" class="mandatory" title="Mandatory">*</span>
-      <select v-model="nation">
-        <option value="" :disabled="!mayOmitNation">
-          {{ mayOmitNation ? 'All countries' : '—' }}
-        </option>
-        <option
-          v-for="nationOption in nationOptions"
-          :key="nationOption.value"
-          :value="nationOption.value"
-        >
-          {{ nationOption.label }}
-        </option>
-      </select>
+      <CustomSelect v-model="nation" :options="nationSelectOptions" placeholder="—" />
     </label>
     <label v-for="field in visibleFields" :key="field.id">
       {{ field.name }}

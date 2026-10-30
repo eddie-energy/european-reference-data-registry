@@ -35,14 +35,14 @@ class KeycloakOrganizationDirectoryTest {
                 exchange,
                 200,
                 "[{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
-                        + "\"attributes\":{\"ceeds_role\":[\"" + role + "\"],\"ceeds_nations\":[\"GER\"]}},"
+                        + "\"attributes\":{\"ceeds_role\":[\"" + role + "\"],\"ceeds_nations\":[\"DEU\"]}},"
                         + "{\"id\":\"" + UUID.randomUUID() + "\",\"alias\":\"op\",\"name\":\"OP\","
                         + "\"attributes\":{\"ceeds_role\":[\"OPERATIONAL_ENTITY\"]}}]"));
         server.createContext("/admin/realms/ceeds/organizations/" + id, exchange -> respond(
                 exchange,
                 200,
                 "{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
-                        + "\"attributes\":{\"ceeds_role\":[\"" + role + "\"],\"ceeds_nations\":[\"GER\"]}}"));
+                        + "\"attributes\":{\"ceeds_role\":[\"" + role + "\"],\"ceeds_nations\":[\"DEU\"]}}"));
         server.start();
         var base = "http://127.0.0.1:" + server.getAddress().getPort();
         var directory = new KeycloakOrganizationDirectory(new KeycloakAdminClient(
@@ -50,7 +50,7 @@ class KeycloakOrganizationDirectoryTest {
 
         assertThat(directory.list()).singleElement().satisfies(organization -> {
             assertThat(organization.getId()).isEqualTo(id);
-            assertThat(organization.getKeycloakNations()).containsExactly(energy.eddie.s3.generated.model.Nation.GER);
+            assertThat(organization.getKeycloakNations()).containsExactly(energy.eddie.s3.generated.model.Nation.DEU);
         });
         assertThat(directory.isEligible(id)).isTrue();
     }

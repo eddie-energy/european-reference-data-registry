@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ButtonLink from '@/components/ButtonLink.vue'
+import CustomSelect from '@/components/CustomSelect.vue'
 import { ref } from 'vue'
 import type { components } from '@/schema'
 import { createManagementUser, updateManagementUser } from '@/api'
@@ -17,6 +18,7 @@ const emit = defineEmits<{ changed: []; close: [] }>()
 
 const username = ref('')
 const temporaryPassword = ref('')
+const countryOptions = [{ value: '', label: 'Not set' }, ...nations]
 const country = ref<Nation | ''>(user?.country ?? '')
 const organizationId = ref(user?.organization?.id ?? '')
 const saving = ref(false)
@@ -75,12 +77,7 @@ const save = async () => {
 
     <label>
       Country
-      <select v-model="country">
-        <option value="">Not set</option>
-        <option v-for="nation in nations" :key="nation.value" :value="nation.value">
-          {{ nation.label }}
-        </option>
-      </select>
+      <CustomSelect v-model="country" :options="countryOptions" placeholder="Not set" />
     </label>
 
     <label>

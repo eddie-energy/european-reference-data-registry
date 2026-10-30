@@ -16,6 +16,7 @@ import {
 } from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
+import CustomSelect from './CustomSelect.vue'
 import ReferenceDataEntryForm from './ReferenceDataEntryForm.vue'
 import ModalDialog from './ModalDialog.vue'
 import VersionTable from './VersionTable.vue'
@@ -23,6 +24,7 @@ import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { referenceDataObject } from '@/stores/referenceDataObject'
 import { maintainableNations, userRole } from '@/stores/userInfo'
+import { nationFlag, nationName, nations } from '@/constants/nations'
 
 type ReferenceDataEntryDto = components['schemas']['ReferenceDataEntryDto']
 type FieldDto = components['schemas']['FieldDto']
@@ -57,6 +59,7 @@ const load = async () => {
 
 onMounted(load)
 watch(() => version.id, load)
+watch(() => version.id, () => (selectedNations.value = []))
 
 const openCreate = () => {
   editing.value = undefined
@@ -141,7 +144,10 @@ const columns = computed<ColumnDef<ReferenceDataEntryDto, any>[]>(() => [
   columnHelper.accessor((referenceDataEntry) => referenceDataEntry.nation, {
     id: 'nation',
     header: 'Country',
-    cell: (ctx) => ctx.row.original.nation ?? '—',
+    cell: (ctx) => {
+      const nation = ctx.row.original.nation
+      return nation ? `${nationFlag(nation)} ${nation}` : '—'
+    },
   }),
   ...version.fields.map((field) =>
     columnHelper.accessor((referenceDataEntry) => rawValue(referenceDataEntry, field), {
@@ -215,10 +221,38 @@ const columns = computed<ColumnDef<ReferenceDataEntryDto, any>[]>(() => [
     : []),
 ])
 
+const searchQuery = ref('')
+const selectedNations = ref<string[]>([])
+
+const nationFilterOptions = computed(() => {
+  const present = new Set(referenceDataEntries.value.map((entry) => entry.nation))
+  return nations.filter((option) => present.has(option.value))
+})
+
+const matchesSearch = (referenceDataEntry: ReferenceDataEntryDto, query: string) =>
+  (referenceDataEntry.nation &&
+    (referenceDataEntry.nation.toLowerCase().includes(query) ||
+      nationName(referenceDataEntry.nation).toLowerCase().includes(query))) ||
+  version.fields.some(
+    (field) =>
+      (!field.nation || field.nation === referenceDataEntry.nation) &&
+      display(referenceDataEntry, field).toLowerCase().includes(query),
+  )
+
+const filteredReferenceDataEntries = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  return referenceDataEntries.value.filter(
+    (entry) =>
+      (!selectedNations.value.length ||
+        (!!entry.nation && selectedNations.value.includes(entry.nation))) &&
+      (!query || matchesSearch(entry, query)),
+  )
+})
+
 const sorting = ref<SortingState>([])
 
 const table = useVueTable({
-  data: referenceDataEntries,
+  data: filteredReferenceDataEntries,
   get columns() {
     return columns.value
   },
@@ -253,10 +287,32 @@ const table = useVueTable({
       </ButtonLink>
     </header>
 
+    <div v-if="referenceDataEntries.length" class="filters">
+      <input
+        v-model="searchQuery"
+        type="search"
+        class="search-input"
+        placeholder="Search by country or content"
+        aria-label="Search reference data entries by country or content"
+      />
+      <CustomSelect
+        v-if="nationFilterOptions.length"
+        v-model="selectedNations"
+        class="nation-filter"
+        :options="nationFilterOptions"
+        placeholder="Filter by country"
+        multiple
+      />
+    </div>
+
     <p v-if="loading" class="empty">Loading…</p>
     <p v-else-if="!referenceDataEntries.length" class="empty">No reference data entries yet.</p>
+    <p v-else-if="!filteredReferenceDataEntries.length" class="empty">
+      No reference data entries match your filters.
+    </p>
     <VersionTable
       v-else
+      animate-rows
       :version-code="version.versionCode"
       :publish-state="version.publishState"
       :colspan="table.getHeaderGroups()[0]?.headers.length ?? 1"
@@ -266,6 +322,7 @@ const table = useVueTable({
           <th
             v-for="header in headerGroup.headers"
             :key="header.id"
+            scope="col"
             :class="{ sortable: header.column.getCanSort() }"
             @click="header.column.getToggleSortingHandler()?.($event)"
           >
@@ -295,6 +352,7 @@ const table = useVueTable({
 
     <ModalDialog
       ref="dialog"
+      size="tall"
       :title="editing ? 'Edit Reference Data Entry' : 'New Reference Data Entry'"
     >
       <ReferenceDataEntryForm
@@ -328,6 +386,32 @@ const table = useVueTable({
 
 .empty {
   opacity: 0.7;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--spacing-md);
+  margin-block: var(--spacing-md);
+}
+
+.nation-filter {
+  flex: 1 1 16rem;
+  min-width: 0;
+  max-width: 24rem;
+}
+
+.search-input {
+  flex: 1 1 16rem;
+  min-width: 0;
+  max-width: 28rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--input-border-color);
+  border-radius: var(--spacing-sm);
+  font-size: 1rem;
+  line-height: 1.5;
+  box-sizing: border-box;
 }
 
 th.sortable {

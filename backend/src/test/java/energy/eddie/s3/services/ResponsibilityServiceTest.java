@@ -32,7 +32,7 @@ class ResponsibilityServiceTest {
                 .thenReturn(true);
 
         assertThat(service.mayMaintain(objectId, Nation.AUT)).isTrue();
-        assertThat(service.mayMaintain(objectId, Nation.GER)).isFalse();
+        assertThat(service.mayMaintain(objectId, Nation.DEU)).isFalse();
     }
 
     @Test

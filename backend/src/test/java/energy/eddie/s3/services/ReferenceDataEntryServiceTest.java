@@ -133,13 +133,13 @@ class ReferenceDataEntryServiceTest {
 
     @Test
     void createReferenceDataEntry_asNdsfOfAnotherNation_throwsForbidden() {
-        when(responsibilityService.mayMaintain(OBJECT_ID, energy.eddie.s3.models.referencedata.Nation.GER))
+        when(responsibilityService.mayMaintain(OBJECT_ID, energy.eddie.s3.models.referencedata.Nation.DEU))
                 .thenReturn(false);
         var rdo = rdo();
         mockVersion(publishedVersion(rdo));
 
         assertThatThrownBy(() -> service.createReferenceDataEntry(
-                        OBJECT_ID, VERSION_ID, new UpsertReferenceDataEntryRequest(List.of()).nation(Nation.GER)))
+                        OBJECT_ID, VERSION_ID, new UpsertReferenceDataEntryRequest(List.of()).nation(Nation.DEU)))
                 .isInstanceOf(ForbiddenException.class);
     }
 

@@ -372,13 +372,13 @@ class ReferenceDataObjectServiceTest {
         var id = UUID.randomUUID();
         var versionId = UUID.randomUUID();
         var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
-        when(responsibilityService.mayMaintain(id, Nation.GER)).thenReturn(false);
+        when(responsibilityService.mayMaintain(id, Nation.DEU)).thenReturn(false);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
 
         var request = new CreateFieldRequest()
                 .name("german_grid_id")
                 .dataType(energy.eddie.s3.generated.model.DataType.TEXT)
-                .nation(energy.eddie.s3.generated.model.Nation.GER);
+                .nation(energy.eddie.s3.generated.model.Nation.DEU);
 
         assertThatThrownBy(() -> service.createField(id, versionId, request))
                 .isInstanceOf(ForbiddenException.class);
@@ -829,13 +829,13 @@ class ReferenceDataObjectServiceTest {
         var versionId = UUID.randomUUID();
         var rdo = rdoWithId(id);
         var version = versionWithId(rdo, versionId, 1, PublishState.DRAFT);
-        when(responsibilityService.mayMaintain(id, Nation.GER)).thenReturn(false);
+        when(responsibilityService.mayMaintain(id, Nation.DEU)).thenReturn(false);
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
 
         var request = new CreateFieldRequest()
                 .name("german_grid_id")
                 .dataType(energy.eddie.s3.generated.model.DataType.TEXT)
-                .nation(energy.eddie.s3.generated.model.Nation.GER);
+                .nation(energy.eddie.s3.generated.model.Nation.DEU);
 
         assertThatThrownBy(() -> service.createField(id, versionId, request))
                 .isInstanceOf(ForbiddenException.class);

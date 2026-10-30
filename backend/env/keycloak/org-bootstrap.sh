@@ -66,7 +66,7 @@ $KCADM update "users/profile" -r "$REALM" -f - <<'PROFILE'
     {
       "name": "ceeds_country",
       "displayName": "Country",
-      "validations": { "options": { "options": [ "AUT", "FRA", "ESP", "GER" ] } },
+      "validations": { "options": { "options": [ "AUT", "BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GRC", "HRV", "HUN", "IRL", "ITA", "LTU", "LUX", "LVA", "MLT", "NLD", "POL", "PRT", "ROU", "SVK", "SVN", "SWE", "USA" ] } },
       "permissions": { "view": [ "admin" ], "edit": [ "admin" ] },
       "multivalued": false
     }
@@ -106,6 +106,28 @@ $KCADM get organizations -r "$REALM" --fields id \
     if [ -n "$org_uuid" ]; then
       $KCADM get "organizations/$org_uuid" -r "$REALM" \
         | $KCADM update "organizations/$org_uuid" -r "$REALM" -f -
+    fi
+  done
+
+echo "Remapping legacy nation code GER to DEU"
+$KCADM get organizations -r "$REALM" --fields id \
+  | tr -d '\n ' | sed 's/},{/}\n/g' \
+  | while IFS= read -r organization_json || [ -n "$organization_json" ]; do
+    org_uuid=$(printf '%s' "$organization_json" | json_field id)
+    if [ -n "$org_uuid" ]; then
+      $KCADM get "organizations/$org_uuid" -r "$REALM" \
+        | sed 's/"GER"/"DEU"/g' \
+        | $KCADM update "organizations/$org_uuid" -r "$REALM" -f -
+    fi
+  done
+$KCADM get users -r "$REALM" -q ceeds_country=GER --fields id \
+  | tr -d '\n ' | sed 's/},{/}\n/g' \
+  | while IFS= read -r user_json || [ -n "$user_json" ]; do
+    user_uuid=$(printf '%s' "$user_json" | json_field id)
+    if [ -n "$user_uuid" ]; then
+      $KCADM get "users/$user_uuid" -r "$REALM" \
+        | sed 's/"GER"/"DEU"/g' \
+        | $KCADM update "users/$user_uuid" -r "$REALM" -f -
     fi
   done
 

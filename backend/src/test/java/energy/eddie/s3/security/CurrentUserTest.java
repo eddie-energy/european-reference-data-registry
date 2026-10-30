@@ -42,14 +42,14 @@ class CurrentUserTest {
         var jwt = Jwt.withTokenValue("token").header("alg", "none").subject("user")
                 .claim("organization", Map.of(
                         "coordinator", Map.of("ceeds_role", "COORDINATING_NDSF", "ceeds_nations", "AUT"),
-                        "ordinary", Map.of("ceeds_role", "NDSF", "ceeds_nations", "GER")))
+                        "ordinary", Map.of("ceeds_role", "NDSF", "ceeds_nations", "DEU")))
                 .build();
         SecurityContextHolder.getContext().setAuthentication(new OrganizationRolesConverter().convert(jwt));
         var currentUser = new CurrentUser();
 
         assertThat(currentUser.coordinatingNdsfNations()).containsExactly(Nation.AUT);
         assertThat(currentUser.mayManageResponsibilitiesFor(Nation.AUT)).isTrue();
-        assertThat(currentUser.mayManageResponsibilitiesFor(Nation.GER)).isFalse();
+        assertThat(currentUser.mayManageResponsibilitiesFor(Nation.DEU)).isFalse();
         assertThat(currentUser.mayManageResponsibilitiesFor(null)).isFalse();
         assertThat(currentUser.maySeeDrafts()).isTrue();
         assertThat(currentUser.isOperationalEntity()).isFalse();

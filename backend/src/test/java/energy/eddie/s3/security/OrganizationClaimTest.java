@@ -31,11 +31,11 @@ class OrganizationClaimTest {
         var organizationId = UUID.randomUUID();
         var jwt = jwtWith(Map.of(
                 "fhooe",
-                Map.of("id", organizationId.toString(), "ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("AUT", "GER"))));
+                Map.of("id", organizationId.toString(), "ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("AUT", "DEU"))));
 
         assertThat(OrganizationClaim.read(jwt))
                 .containsExactly(
-                        new OrganizationMembership("fhooe", organizationId, Set.of(CeedsRole.NDSF), Set.of(Nation.AUT, Nation.GER)));
+                        new OrganizationMembership("fhooe", organizationId, Set.of(CeedsRole.NDSF), Set.of(Nation.AUT, Nation.DEU)));
     }
 
     @Test
@@ -85,27 +85,27 @@ class OrganizationClaimTest {
                 "fhooe",
                 Map.of("ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("AUT")),
                 "other",
-                Map.of("ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("GER"))));
+                Map.of("ceeds_role", List.of("NDSF"), "ceeds_nations", List.of("DEU"))));
 
         var authorities = new OrganizationRolesConverter().convert(jwt).getAuthorities().stream()
                 .map(Object::toString)
                 .toList();
 
         assertThat(authorities)
-                .containsExactlyInAnyOrder("ROLE_PARTICIPANT", "ROLE_NDSF", "NDSF_NATION_AUT", "NDSF_NATION_GER");
+                .containsExactlyInAnyOrder("ROLE_PARTICIPANT", "ROLE_NDSF", "NDSF_NATION_AUT", "NDSF_NATION_DEU");
     }
 
     @Test
     void coordinatorInheritsNdsfButOnlyCoordinatesItsOwnMembershipNations() {
         var jwt = jwtWith(Map.of(
                 "coordinator", Map.of("ceeds_role", "COORDINATING_NDSF", "ceeds_nations", List.of("AUT", "ATLANTIS")),
-                "ordinary", Map.of("ceeds_role", "NDSF", "ceeds_nations", "GER"),
+                "ordinary", Map.of("ceeds_role", "NDSF", "ceeds_nations", "DEU"),
                 "second", Map.of("ceeds_role", "COORDINATING_NDSF", "ceeds_nations", "FRA")));
         var authorities = new OrganizationRolesConverter().convert(jwt).getAuthorities().stream()
                 .map(Object::toString).toList();
         assertThat(authorities).containsExactlyInAnyOrder(
                 "ROLE_PARTICIPANT", "ROLE_NDSF", "ROLE_COORDINATING_NDSF",
-                "NDSF_NATION_AUT", "NDSF_NATION_GER", "NDSF_NATION_FRA",
+                "NDSF_NATION_AUT", "NDSF_NATION_DEU", "NDSF_NATION_FRA",
                 "COORDINATING_NDSF_NATION_AUT", "COORDINATING_NDSF_NATION_FRA");
     }
 

@@ -61,7 +61,7 @@ class CoordinatorAuthorizationTest {
                         "coordinator", Map.of("id", organizationId.toString(),
                                 "ceeds_role", "COORDINATING_NDSF", "ceeds_nations", "AUT"),
                         "ordinary", Map.of("id", ordinaryOrganizationId.toString(),
-                                "ceeds_role", "NDSF", "ceeds_nations", "GER")))
+                                "ceeds_role", "NDSF", "ceeds_nations", "DEU")))
                 .build());
     }
 
@@ -122,9 +122,9 @@ class CoordinatorAuthorizationTest {
         mvc.perform(post("/api/reference-data-objects/{id}/responsibilities", objectId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer coordinator")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"organizationId\":\"" + organizationId + "\",\"nation\":\"GER\"}"))
+                        .content("{\"organizationId\":\"" + organizationId + "\",\"nation\":\"DEU\"}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(delete("/api/reference-data-objects/{id}/responsibilities/{org}/GER", objectId, organizationId)
+        mvc.perform(delete("/api/reference-data-objects/{id}/responsibilities/{org}/DEU", objectId, organizationId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer coordinator"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(responsibilities, objects, directory);
@@ -137,7 +137,7 @@ class CoordinatorAuthorizationTest {
         when(objects.existsById(objectId)).thenReturn(true);
         when(responsibilities.findByReferenceDataObjectId(objectId)).thenReturn(List.of(
                 new Responsibility(object, organizationId, Nation.AUT),
-                new Responsibility(object, organizationId, Nation.GER)));
+                new Responsibility(object, organizationId, Nation.DEU)));
 
         mvc.perform(get("/api/reference-data-objects/{id}/responsibilities", objectId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer coordinator"))

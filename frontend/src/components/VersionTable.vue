@@ -3,6 +3,7 @@ defineProps<{
   versionCode: number
   publishState: 'DRAFT' | 'PUBLISHED'
   colspan: number
+  animateRows?: boolean
 }>()
 </script>
 
@@ -25,7 +26,10 @@ defineProps<{
         </tr>
         <slot name="header" />
       </thead>
-      <tbody>
+      <TransitionGroup v-if="animateRows" tag="tbody" name="row">
+        <slot />
+      </TransitionGroup>
+      <tbody v-else>
         <slot />
       </tbody>
     </table>
@@ -49,6 +53,31 @@ table {
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
+}
+
+.row-move,
+.row-enter-active,
+.row-leave-active {
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.row-enter-from,
+.row-leave-to {
+  opacity: 0;
+}
+
+.row-enter-from {
+  transform: translateY(calc(-1 * var(--spacing-sm)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-move,
+  .row-enter-active,
+  .row-leave-active {
+    transition: none;
+  }
 }
 
 .version-row th {
