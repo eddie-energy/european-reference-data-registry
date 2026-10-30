@@ -59,12 +59,12 @@ class KeycloakUserDirectoryTest {
         var directory = directory(http -> http.createContext("/admin/realms/ceeds/organizations", exchange -> respond(
                 exchange, 200,
                 "[{\"id\":\"" + id + "\",\"alias\":\"eda\",\"name\":\"EDA\",\"enabled\":true,"
-                        + "\"attributes\":{\"ceeds_role\":[\"NDSF\"],\"ceeds_nations\":[\"AUT\",\"GER\"]}},"
+                        + "\"attributes\":{\"ceeds_role\":[\"NDSF\"],\"ceeds_nations\":[\"AUT\",\"DEU\"]}},"
                         + "{\"id\":\"" + UUID.randomUUID() + "\",\"alias\":\"off\",\"name\":\"Off\",\"enabled\":false}]")));
 
         assertThat(directory.listOrganizationDetails()).singleElement().satisfies(organization -> {
             assertThat(organization.roles()).containsExactly(CeedsRole.NDSF);
-            assertThat(organization.nations()).containsExactly(Nation.AUT, Nation.GER);
+            assertThat(organization.nations()).containsExactly(Nation.AUT, Nation.DEU);
         });
     }
 
@@ -173,9 +173,9 @@ class KeycloakUserDirectoryTest {
             }
         }));
 
-        directory.updateCountry(id, Nation.GER);
+        directory.updateCountry(id, Nation.DEU);
 
-        assertThat(written.get()).contains("\"username\":\"ceeds\"").contains("\"ceeds_country\":[\"GER\"]");
+        assertThat(written.get()).contains("\"username\":\"ceeds\"").contains("\"ceeds_country\":[\"DEU\"]");
     }
 
     private KeycloakUserDirectory directory(java.util.function.Consumer<HttpServer> routes) throws IOException {

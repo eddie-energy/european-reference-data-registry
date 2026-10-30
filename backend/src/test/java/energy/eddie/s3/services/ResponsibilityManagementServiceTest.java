@@ -76,9 +76,9 @@ class ResponsibilityManagementServiceTest {
     @Test
     void coordinatorCannotAssignOrRemoveOutsideItsCountries() {
         authenticate("COORDINATING_NDSF", List.of("AUT"));
-        assertThatThrownBy(() -> service.assign(objectId, new AssignResponsibilityRequest(organizationId, Nation.GER)))
+        assertThatThrownBy(() -> service.assign(objectId, new AssignResponsibilityRequest(organizationId, Nation.DEU)))
                 .isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> service.remove(objectId, organizationId, Nation.GER))
+        assertThatThrownBy(() -> service.remove(objectId, organizationId, Nation.DEU))
                 .isInstanceOf(ForbiddenException.class);
         verifyNoInteractions(repository, objects, directory);
     }
@@ -90,7 +90,7 @@ class ResponsibilityManagementServiceTest {
         var object = new ReferenceDataObject("x", "y");
         when(repository.findByReferenceDataObjectId(objectId)).thenReturn(List.of(
                 new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.AUT),
-                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.DEU)));
         assertThat(service.list(objectId)).extracting(item -> item.getNation()).containsExactly(Nation.AUT);
     }
 

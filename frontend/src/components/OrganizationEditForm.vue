@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ButtonLink from '@/components/ButtonLink.vue'
+import CustomSelect from '@/components/CustomSelect.vue'
 import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import { assignResponsibility, removeResponsibility, updateOrganization } from '@/api'
@@ -209,11 +210,11 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
         </label>
         <label>
           Nation
-          <select v-model="newNation">
-            <option v-for="nation in nationOptions" :key="nation.value" :value="nation.value">
-              {{ nation.label }}
-            </option>
-          </select>
+          <CustomSelect
+            v-model="newNation"
+            :options="nationOptions"
+            placeholder="Select a nation"
+          />
         </label>
         <ButtonLink type="submit" button-style="primary" :disabled="saving || alreadyAssigned">
           Assign

@@ -2,7 +2,31 @@ package energy.eddie.s3.models.referencedata;
 
 public enum Nation {
     AUT,
-    FRA,
+    BEL,
+    BGR,
+    CYP,
+    CZE,
+    DEU,
+    DNK,
     ESP,
-    GER
+    EST,
+    FIN,
+    FRA,
+    GRC,
+    HRV,
+    HUN,
+    IRL,
+    ITA,
+    LTU,
+    LUX,
+    LVA,
+    MLT,
+    NLD,
+    POL,
+    PRT,
+    ROU,
+    SVK,
+    SVN,
+    SWE,
+    USA
 }

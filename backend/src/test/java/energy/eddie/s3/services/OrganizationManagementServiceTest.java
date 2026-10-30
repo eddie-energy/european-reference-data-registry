@@ -50,11 +50,11 @@ class OrganizationManagementServiceTest {
         var object = new ReferenceDataObject("Permissions", "description");
         ReflectionTestUtils.setField(object, "id", UUID.randomUUID());
         when(directory.listOrganizationDetails()).thenReturn(List.of(
-                organization("eda", CeedsRole.NDSF, Nation.GER),
+                organization("eda", CeedsRole.NDSF, Nation.DEU),
                 organization("ops", CeedsRole.OPERATIONAL_ENTITY)));
         when(responsibilities.findByOrganizationIdIn(any())).thenReturn(List.of(
                 new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.AUT),
-                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.DEU)));
         var result = service.list();
         assertThat(result).singleElement().satisfies(org -> {
             assertThat(org.getEditable()).isFalse();
@@ -70,7 +70,7 @@ class OrganizationManagementServiceTest {
         var objectId = UUID.randomUUID();
         ReflectionTestUtils.setField(object, "id", objectId);
         when(responsibilities.findByOrganizationIdIn(Set.of(organizationId))).thenReturn(List.of(
-                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.DEU)));
         var result = service.update(organizationId, new UpdateOrganizationRequest()
                 .role(role)
                 .nations(List.of(Nation.AUT)));
@@ -78,7 +78,7 @@ class OrganizationManagementServiceTest {
         assertThat(result.getRole()).isEqualTo(role);
         assertThat(result.getResponsibilities()).singleElement().satisfies(item -> {
             assertThat(item.getReferenceDataObjectId()).isEqualTo(objectId);
-            assertThat(item.getNation()).isEqualTo(Nation.GER);
+            assertThat(item.getNation()).isEqualTo(Nation.DEU);
         });
         verify(responsibilities, never()).deleteByOrganizationId(any());
     }
@@ -89,19 +89,19 @@ class OrganizationManagementServiceTest {
         var object = new ReferenceDataObject("Permissions", "description");
         ReflectionTestUtils.setField(object, "id", objectId);
         when(directory.listOrganizationDetails()).thenReturn(List.of(
-                organization("eda", CeedsRole.NDSF, Nation.AUT, Nation.GER),
+                organization("eda", CeedsRole.NDSF, Nation.AUT, Nation.DEU),
                 new KeycloakUserDirectory.KeycloakOrganization(UUID.randomUUID(), "fhooe", "FHOOE", List.of(CeedsRole.OPERATIONAL_ENTITY), List.of())));
         when(responsibilities.findByOrganizationIdIn(any())).thenReturn(List.of(
-                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.GER)));
+                new Responsibility(object, organizationId, energy.eddie.s3.models.referencedata.Nation.DEU)));
 
         var result = service.list();
 
-        assertThat(result.get(0).getNations()).containsExactly(Nation.AUT, Nation.GER);
+        assertThat(result.get(0).getNations()).containsExactly(Nation.AUT, Nation.DEU);
         assertThat(result.get(0).getRole()).isEqualTo(OrganizationRole.NDSF);
         assertThat(result.get(0).getEditable()).isTrue();
         assertThat(result.get(0).getResponsibilities()).singleElement().satisfies(held -> {
             assertThat(held.getReferenceDataObjectId()).isEqualTo(objectId);
-            assertThat(held.getNation()).isEqualTo(Nation.GER);
+            assertThat(held.getNation()).isEqualTo(Nation.DEU);
         });
         assertThat(result.get(1).getEditable()).isFalse();
     }
@@ -181,7 +181,7 @@ class OrganizationManagementServiceTest {
         service.create(new CreateOrganizationRequest()
                 .name("Ops")
                 .role(OrganizationRole.OPERATIONAL_ENTITY)
-                .nations(List.of(Nation.GER)));
+                .nations(List.of(Nation.DEU)));
 
         verify(directory).createOrganization("Ops", "ops", List.of(CeedsRole.OPERATIONAL_ENTITY), List.of());
     }

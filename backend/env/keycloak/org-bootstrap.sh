@@ -66,7 +66,7 @@ $KCADM update "users/profile" -r "$REALM" -f - <<'PROFILE'
     {
       "name": "ceeds_country",
       "displayName": "Country",
-      "validations": { "options": { "options": [ "AUT", "FRA", "ESP", "GER" ] } },
+      "validations": { "options": { "options": [ "AUT", "BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GRC", "HRV", "HUN", "IRL", "ITA", "LTU", "LUX", "LVA", "MLT", "NLD", "POL", "PRT", "ROU", "SVK", "SVN", "SWE", "USA" ] } },
       "permissions": { "view": [ "admin" ], "edit": [ "admin" ] },
       "multivalued": false
     }

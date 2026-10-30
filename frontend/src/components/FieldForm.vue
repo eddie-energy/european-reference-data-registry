@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { createField } from '@/api'
 import type { components } from '@/schema'
 import ButtonLink from './ButtonLink.vue'
+import CustomSelect from './CustomSelect.vue'
 import useToast from '@/composables/useToast'
 import { nations } from '@/constants/nations'
 import { maintainableNations, userRole } from '@/stores/userInfo'
@@ -34,6 +35,11 @@ const nationOptions = computed(() =>
     ? nations
     : nations.filter((option) => maintainableNations(id).includes(option.value)),
 )
+
+const nationSelectOptions = computed(() => [
+  ...(isOperationalEntity.value ? [{ value: '', label: 'All nations' }] : []),
+  ...nationOptions.value,
+])
 
 const addOption = () => {
   const option = optionDraft.value.trim()
@@ -137,18 +143,7 @@ const submit = async () => {
     <label>
       Nation
       <span v-if="!isOperationalEntity" class="mandatory" title="Mandatory">*</span>
-      <select v-model="nation">
-        <option value="" :disabled="!isOperationalEntity">
-          {{ isOperationalEntity ? 'All nations' : '—' }}
-        </option>
-        <option
-          v-for="nationOption in nationOptions"
-          :key="nationOption.value"
-          :value="nationOption.value"
-        >
-          {{ nationOption.label }}
-        </option>
-      </select>
+      <CustomSelect v-model="nation" :options="nationSelectOptions" placeholder="—" />
     </label>
     <label class="checkbox">
       <input v-model="mandatory" type="checkbox" />

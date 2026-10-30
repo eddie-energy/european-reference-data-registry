@@ -27,7 +27,7 @@ class OrganizationDefaultAttributesTest {
     void existingValuesRemainUnchanged() {
         var attributes = Map.of(
                 "ceeds_role", List.of("NDSF"),
-                "ceeds_nations", List.of("AUT", "GER"));
+                "ceeds_nations", List.of("AUT", "DEU"));
 
         var result = OrganizationDefaultAttributes.addTo(attributes);
 

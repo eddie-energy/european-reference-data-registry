@@ -78,7 +78,7 @@ re-runs on every `docker compose up`.
 
 Roles are assigned to **organizations**, not users (issue #144). An organization carries two
 attributes, `ceeds_role` (`NDSF` / `COORDINATING_NDSF` / `OPERATIONAL_ENTITY`, multivalued) and `ceeds_nations`
-(`AUT`/`FRA`/`ESP`/`GER`, meaningful when either NDSF role is present, including alongside Operational Entity). Seed
+(ISO 3166-1 alpha-3 codes of EU member states and the US, e.g. `AUT`/`DEU`, meaningful when either NDSF role is present, including alongside Operational Entity). Seed
 org: `fhooe` = Operational Entity, with the `ceeds` user as its member — the dev login therefore has
 full rights. Change it by editing the `ORGANIZATIONS` array (`alias|name|domain|roles|nations`) in
 `org-bootstrap.sh` and re-running that service. A user's effective roles are the **union** over every organization they
