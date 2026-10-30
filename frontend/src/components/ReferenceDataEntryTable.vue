@@ -23,6 +23,7 @@ import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { referenceDataObject } from '@/stores/referenceDataObject'
 import { maintainableNations, userRole } from '@/stores/userInfo'
+import { nationName } from '@/constants/nations'
 
 type ReferenceDataEntryDto = components['schemas']['ReferenceDataEntryDto']
 type FieldDto = components['schemas']['FieldDto']
@@ -215,10 +216,25 @@ const columns = computed<ColumnDef<ReferenceDataEntryDto, any>[]>(() => [
     : []),
 ])
 
+const searchQuery = ref('')
+
+const matchesSearch = (referenceDataEntry: ReferenceDataEntryDto, query: string) =>
+  (referenceDataEntry.nation &&
+    (referenceDataEntry.nation.toLowerCase().includes(query) ||
+      nationName(referenceDataEntry.nation).toLowerCase().includes(query))) ||
+  version.fields.some((field) => display(referenceDataEntry, field).toLowerCase().includes(query))
+
+const filteredReferenceDataEntries = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  return query
+    ? referenceDataEntries.value.filter((entry) => matchesSearch(entry, query))
+    : referenceDataEntries.value
+})
+
 const sorting = ref<SortingState>([])
 
 const table = useVueTable({
-  data: referenceDataEntries,
+  data: filteredReferenceDataEntries,
   get columns() {
     return columns.value
   },
@@ -253,10 +269,23 @@ const table = useVueTable({
       </ButtonLink>
     </header>
 
+    <input
+      v-if="referenceDataEntries.length"
+      v-model="searchQuery"
+      type="search"
+      class="search-input"
+      placeholder="Search by country or content"
+      aria-label="Search reference data entries by name or country"
+    />
+
     <p v-if="loading" class="empty">Loading…</p>
     <p v-else-if="!referenceDataEntries.length" class="empty">No reference data entries yet.</p>
+    <p v-else-if="!filteredReferenceDataEntries.length" class="empty">
+      No reference data entries match your search.
+    </p>
     <VersionTable
       v-else
+      animate-rows
       :version-code="version.versionCode"
       :publish-state="version.publishState"
       :colspan="table.getHeaderGroups()[0]?.headers.length ?? 1"
@@ -295,6 +324,7 @@ const table = useVueTable({
 
     <ModalDialog
       ref="dialog"
+      size="tall"
       :title="editing ? 'Edit Reference Data Entry' : 'New Reference Data Entry'"
     >
       <ReferenceDataEntryForm
@@ -328,6 +358,16 @@ const table = useVueTable({
 
 .empty {
   opacity: 0.7;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 28rem;
+  margin-block: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--input-border-color);
+  border-radius: var(--default-border-radius);
+  box-sizing: border-box;
 }
 
 th.sortable {

@@ -4,7 +4,7 @@ import CrossIcon from '@/assets/icons/CrossIcon.svg'
 
 const { title, size } = defineProps<{
   title: string
-  size?: 'default' | 'large'
+  size?: 'default' | 'large' | 'tall'
 }>()
 
 const modal = ref<HTMLDialogElement>()
@@ -20,7 +20,12 @@ defineExpose({ showModal, close })
 </script>
 
 <template>
-  <dialog class="dialog" :class="{ large: size === 'large' }" ref="modal" closedby="any">
+  <dialog
+    class="dialog"
+    :class="size && size !== 'default' ? size : undefined"
+    ref="modal"
+    closedby="any"
+  >
     <header class="dialog-header">
       <p class="title-domain">{{ title }}</p>
       <button type="button" @click="close" aria-label="Close Modal Window" class="close-button">
@@ -51,6 +56,10 @@ defineExpose({ showModal, close })
   &.large {
     width: 80vw;
     min-height: 32rem;
+  }
+
+  &.tall {
+    min-height: 28rem;
   }
 }
 

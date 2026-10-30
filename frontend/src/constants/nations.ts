@@ -37,6 +37,8 @@ const NATION_ISO2: Record<Nation, keyof typeof countries> = {
 const flagEmoji = (code: string): string =>
   String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.codePointAt(0)! - 65))
 
+export const nationName = (nation: Nation): string => countries[NATION_ISO2[nation]].name
+
 export const nationFlag = (nation: Nation): string => flagEmoji(NATION_ISO2[nation])
 
 export const nations: { value: Nation; label: string }[] = (Object.keys(NATION_ISO2) as Nation[])
