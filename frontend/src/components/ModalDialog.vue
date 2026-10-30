@@ -50,6 +50,7 @@ defineExpose({ showModal, close })
 
   &.large {
     width: 80vw;
+    min-height: 32rem;
   }
 }
 

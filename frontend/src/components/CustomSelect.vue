@@ -2,12 +2,13 @@
 import ChevronDownIcon from '@/assets/icons/ChevronDownIcon.svg'
 import { computed, nextTick, ref, useId, useTemplateRef } from 'vue'
 
-const { options, placeholder, compact } = defineProps<{
+const { options, placeholder, compact, multiple } = defineProps<{
   options: { label?: string; value: string }[] | string[]
   placeholder: string
   compact?: boolean
+  multiple?: boolean
 }>()
-const model = defineModel<string>()
+const model = defineModel<string | string[]>()
 const show = ref(false)
 const openUpward = ref(false)
 const activeIndex = ref(0)
@@ -48,9 +49,28 @@ const normalize = (text: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
 
-const selectedLabel = computed(
-  () => labelValueOptions.value.find((option) => option.value === model.value)?.label,
+const selectedValues = computed<string[]>(() => {
+  if (Array.isArray(model.value)) return model.value
+  return model.value === undefined ? [] : [model.value]
+})
+
+const isSelected = (value: string) => selectedValues.value.includes(value)
+
+const selectedOptions = computed(() =>
+  labelValueOptions.value.filter((option) => isSelected(option.value)),
 )
+
+const selectedLabel = computed(() => selectedOptions.value[0]?.label)
+
+const inputValue = computed(() => {
+  if (multiple || show.value) return query.value
+  return selectedLabel.value ?? ''
+})
+
+const inputPlaceholder = computed(() => {
+  if (multiple) return selectedOptions.value.length ? '' : placeholder
+  return selectedLabel.value ?? placeholder
+})
 
 const filteredOptions = computed(() => {
   const needle = normalize(query.value.trim())
@@ -67,7 +87,7 @@ async function scrollActiveIntoView() {
 
 function openDropdown() {
   if (parentDiv.value) openUpward.value = shouldOpenUpward(parentDiv.value)
-  const currentIndex = filteredOptions.value.findIndex((option) => option.value === model.value)
+  const currentIndex = filteredOptions.value.findIndex((option) => isSelected(option.value))
   activeIndex.value = Math.max(currentIndex, 0)
   show.value = true
   scrollActiveIntoView()
@@ -102,7 +122,21 @@ function moveActive(delta: number) {
   scrollActiveIntoView()
 }
 
+const removeValue = (value: string) => {
+  model.value = selectedValues.value.filter((selected) => selected !== value)
+}
+
 const handleOptionClick = (value: string) => {
+  if (multiple) {
+    if (isSelected(value)) removeValue(value)
+    else model.value = [...selectedValues.value, value]
+    query.value = ''
+    activeIndex.value = Math.max(
+      filteredOptions.value.findIndex((option) => option.value === value),
+      0,
+    )
+    return
+  }
   closeDropdown()
   model.value = value
 }
@@ -130,6 +164,11 @@ function handleKeydown(e: KeyboardEvent) {
     case 'Escape':
       closeDropdown()
       break
+    case 'Backspace':
+      if (multiple && !query.value && selectedValues.value.length) {
+        removeValue(selectedValues.value[selectedValues.value.length - 1]!)
+      }
+      break
   }
 }
 
@@ -142,14 +181,30 @@ const handleBlur = () => closeDropdown()
     :class="{ 'is-open': show, 'flip-up': openUpward, compact: compact }"
     class="select"
   >
-    <div :class="{ placeholder: !selectedLabel && !query }" class="main-option" @click="toggleOpen">
+    <div
+      :class="{ placeholder: !selectedOptions.length && !query, multiple: multiple }"
+      class="main-option"
+      @click="toggleOpen"
+    >
+      <span v-for="option in multiple ? selectedOptions : []" :key="option.value" class="chip">
+        {{ option.label ?? option.value }}
+        <button
+          type="button"
+          class="chip-remove"
+          :aria-label="`Remove ${option.label ?? option.value}`"
+          @mousedown.prevent
+          @click.stop="removeValue(option.value)"
+        >
+          ×
+        </button>
+      </span>
       <input
         ref="search"
         :aria-activedescendant="show && filteredOptions.length ? activeOptionId : undefined"
         :aria-controls="listboxId"
         :aria-expanded="show"
-        :placeholder="selectedLabel ?? placeholder"
-        :value="show ? query : (selectedLabel ?? '')"
+        :placeholder="inputPlaceholder"
+        :value="inputValue"
         aria-autocomplete="list"
         aria-haspopup="listbox"
         autocomplete="off"
@@ -163,13 +218,19 @@ const handleBlur = () => closeDropdown()
       <ChevronDownIcon class="icon" />
     </div>
     <Transition>
-      <div v-if="show" :id="listboxId" class="options" role="listbox">
+      <div
+        v-if="show"
+        :id="listboxId"
+        :aria-multiselectable="multiple"
+        class="options"
+        role="listbox"
+      >
         <div
           v-for="(option, index) in filteredOptions"
           :id="optionId(index)"
           :key="option.value"
-          :aria-selected="model === option.value"
-          :class="{ selected: model === option.value, active: index === activeIndex }"
+          :aria-selected="isSelected(option.value)"
+          :class="{ selected: isSelected(option.value), active: index === activeIndex }"
           class="option"
           role="option"
           @mousedown.prevent
@@ -269,6 +330,42 @@ const handleBlur = () => closeDropdown()
 .main-option:focus-within {
   border-color: var(--teal);
   box-shadow: 0 0 0 3px var(--teal-tint-bg);
+}
+
+.main-option.multiple {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--spacing-xs);
+
+  .search {
+    flex: 1 1 6rem;
+  }
+
+  .icon {
+    margin-left: auto;
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-sm);
+  border-radius: var(--chip-radius);
+  background-color: var(--teal-tint-bg);
+  color: var(--teal-tint-text);
+  font-size: 0.875rem;
+}
+
+.chip-remove {
+  display: flex;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .no-results {

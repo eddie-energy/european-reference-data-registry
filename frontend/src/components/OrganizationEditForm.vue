@@ -6,7 +6,7 @@ import type { components } from '@/schema'
 import { assignResponsibility, removeResponsibility, updateOrganization } from '@/api'
 import { referenceDataObjects } from '@/stores/referenceDataObject'
 import { coordinatingNdsfNations, mayManageResponsibilities, userRole } from '@/stores/userInfo'
-import { nations } from '@/constants/nations'
+import { nationFlag, nations } from '@/constants/nations'
 import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { organizationRoleLabels } from '@/constants/organizationRoles'
@@ -174,7 +174,7 @@ const remove = async (item: components['schemas']['OrganizationResponsibilityDto
             :key="`${item.referenceDataObjectId}:${item.nation}`"
           >
             <td>{{ objectName(item.referenceDataObjectId) }}</td>
-            <td>{{ item.nation }}</td>
+            <td>{{ nationFlag(item.nation) }} {{ item.nation }}</td>
             <td>
               <ButtonLink
                 type="button"

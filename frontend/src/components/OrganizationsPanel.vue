@@ -21,6 +21,7 @@ import ModalDialog from '@/components/ModalDialog.vue'
 import OrganizationCreateForm from '@/components/OrganizationCreateForm.vue'
 import OrganizationEditForm from '@/components/OrganizationEditForm.vue'
 import SortableTable from '@/components/SortableTable.vue'
+import { nationFlag } from '@/constants/nations'
 import { organizationRoleLabels } from '@/constants/organizationRoles'
 
 type ManagedOrganization = components['schemas']['ManagedOrganizationDto']
@@ -98,7 +99,10 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
       id: 'nations',
       header: 'Nations',
       sortUndefined: 'last',
-      cell: (ctx) => chips([...ctx.row.original.nations].sort()),
+      cell: (ctx) =>
+        chips(
+          [...ctx.row.original.nations].sort().map((nation) => `${nationFlag(nation)} ${nation}`),
+        ),
     },
   ),
   columnHelper.accessor((organization) => organization.responsibilities.length, {
@@ -107,7 +111,8 @@ const columns: ColumnDef<ManagedOrganization, any>[] = [
     cell: (ctx) =>
       chips(
         ctx.row.original.responsibilities.map(
-          (item) => `${objectName(item.referenceDataObjectId)} · ${item.nation}`,
+          (item) =>
+            `${objectName(item.referenceDataObjectId)} · ${nationFlag(item.nation)} ${item.nation}`,
         ),
       ),
   }),

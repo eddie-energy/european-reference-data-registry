@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ButtonLink from '@/components/ButtonLink.vue'
+import CustomSelect from '@/components/CustomSelect.vue'
 import { computed, ref } from 'vue'
 import type { components } from '@/schema'
 import { createOrganization } from '@/api'
@@ -58,13 +59,15 @@ const submit = async () => {
         {{ label }}
       </label>
     </fieldset>
-    <fieldset v-if="hasNdsfRole">
-      <legend>Nations</legend>
-      <label v-for="nation in nations" :key="nation.value" class="check">
-        <input v-model="selectedNations" type="checkbox" :value="nation.value" />
-        {{ nation.label }}
-      </label>
-    </fieldset>
+    <div v-if="hasNdsfRole" class="field">
+      <span>Nations</span>
+      <CustomSelect
+        v-model="selectedNations"
+        :options="nations"
+        placeholder="Select nations"
+        multiple
+      />
+    </div>
     <div class="actions">
       <ButtonLink
         type="button"
@@ -90,7 +93,8 @@ const submit = async () => {
   border-radius: var(--default-border-radius);
 }
 
-label {
+label,
+.field {
   display: grid;
   gap: var(--spacing-xs);
 }
