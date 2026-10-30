@@ -46,7 +46,7 @@ const searchInput = useTemplateRef('search')
 const normalize = (text: string) =>
   text
     .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
+    .replaceAll(/\p{Diacritic}/gu, '')
     .toLowerCase()
 
 const selectedValues = computed<string[]>(() => {
@@ -184,7 +184,7 @@ const handleBlur = () => closeDropdown()
     <div
       :class="{ placeholder: !selectedOptions.length && !query, multiple: multiple }"
       class="main-option"
-      @click="toggleOpen"
+      @click.prevent="toggleOpen"
     >
       <span v-for="option in multiple ? selectedOptions : []" :key="option.value" class="chip">
         {{ option.label ?? option.value }}
@@ -224,6 +224,8 @@ const handleBlur = () => closeDropdown()
         :aria-multiselectable="multiple"
         class="options"
         role="listbox"
+        @mousedown.prevent
+        @click.prevent
       >
         <div
           v-for="(option, index) in filteredOptions"
@@ -235,7 +237,7 @@ const handleBlur = () => closeDropdown()
           role="option"
           @mousedown.prevent
           @mouseenter="activeIndex = index"
-          @click.stop="handleOptionClick(option.value)"
+          @click.stop.prevent="handleOptionClick(option.value)"
         >
           {{ option.label }}
         </div>

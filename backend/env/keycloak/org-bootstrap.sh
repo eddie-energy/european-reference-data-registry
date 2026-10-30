@@ -109,6 +109,28 @@ $KCADM get organizations -r "$REALM" --fields id \
     fi
   done
 
+echo "Remapping legacy nation code GER to DEU"
+$KCADM get organizations -r "$REALM" --fields id \
+  | tr -d '\n ' | sed 's/},{/}\n/g' \
+  | while IFS= read -r organization_json || [ -n "$organization_json" ]; do
+    org_uuid=$(printf '%s' "$organization_json" | json_field id)
+    if [ -n "$org_uuid" ]; then
+      $KCADM get "organizations/$org_uuid" -r "$REALM" \
+        | sed 's/"GER"/"DEU"/g' \
+        | $KCADM update "organizations/$org_uuid" -r "$REALM" -f -
+    fi
+  done
+$KCADM get users -r "$REALM" -q ceeds_country=GER --fields id \
+  | tr -d '\n ' | sed 's/},{/}\n/g' \
+  | while IFS= read -r user_json || [ -n "$user_json" ]; do
+    user_uuid=$(printf '%s' "$user_json" | json_field id)
+    if [ -n "$user_uuid" ]; then
+      $KCADM get "users/$user_uuid" -r "$REALM" \
+        | sed 's/"GER"/"DEU"/g' \
+        | $KCADM update "users/$user_uuid" -r "$REALM" -f -
+    fi
+  done
+
 for entry in "${MEMBERSHIPS[@]}"; do
   IFS='|' read -r username alias <<< "$entry"
   eval "org_uuid=\$ORG_UUID_${alias}"

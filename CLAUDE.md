@@ -152,6 +152,11 @@ docker compose -f backend/env/docker-compose.yaml up -d   # postgres (:5440) + k
 - Health: http://localhost:8080/actuator/health · Swagger UI: http://localhost:8080/swagger-ui.html
 - Keycloak admin console: http://localhost:8081 (`admin`/`admin`, from `backend/env/.env`)
 
+## Code review
+
+During code review, check https://eclipse-energy.github.io/.github/ai/for-agents for the guidelines
+on how to conduct the review, and follow them.
+
 ## Conventions & gotchas
 
 - **No explanatory comments.** Don't write Javadoc, block comments, or inline comments that restate

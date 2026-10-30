@@ -225,7 +225,11 @@ const matchesSearch = (referenceDataEntry: ReferenceDataEntryDto, query: string)
   (referenceDataEntry.nation &&
     (referenceDataEntry.nation.toLowerCase().includes(query) ||
       nationName(referenceDataEntry.nation).toLowerCase().includes(query))) ||
-  version.fields.some((field) => display(referenceDataEntry, field).toLowerCase().includes(query))
+  version.fields.some(
+    (field) =>
+      (!field.nation || field.nation === referenceDataEntry.nation) &&
+      display(referenceDataEntry, field).toLowerCase().includes(query),
+  )
 
 const filteredReferenceDataEntries = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -278,7 +282,7 @@ const table = useVueTable({
       type="search"
       class="search-input"
       placeholder="Search by country or content"
-      aria-label="Search reference data entries by name or country"
+      aria-label="Search reference data entries by country or content"
     />
 
     <p v-if="loading" class="empty">Loading…</p>
@@ -298,6 +302,7 @@ const table = useVueTable({
           <th
             v-for="header in headerGroup.headers"
             :key="header.id"
+            scope="col"
             :class="{ sortable: header.column.getCanSort() }"
             @click="header.column.getToggleSortingHandler()?.($event)"
           >
