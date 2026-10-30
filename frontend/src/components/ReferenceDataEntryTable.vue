@@ -23,7 +23,7 @@ import { useConfirmDialog } from '@/composables/confirm-dialog'
 import useToast from '@/composables/useToast'
 import { referenceDataObject } from '@/stores/referenceDataObject'
 import { maintainableNations, userRole } from '@/stores/userInfo'
-import { nationName } from '@/constants/nations'
+import { nationFlag, nationName } from '@/constants/nations'
 
 type ReferenceDataEntryDto = components['schemas']['ReferenceDataEntryDto']
 type FieldDto = components['schemas']['FieldDto']
@@ -142,7 +142,10 @@ const columns = computed<ColumnDef<ReferenceDataEntryDto, any>[]>(() => [
   columnHelper.accessor((referenceDataEntry) => referenceDataEntry.nation, {
     id: 'nation',
     header: 'Country',
-    cell: (ctx) => ctx.row.original.nation ?? '—',
+    cell: (ctx) => {
+      const nation = ctx.row.original.nation
+      return nation ? `${nationFlag(nation)} ${nation}` : '—'
+    },
   }),
   ...version.fields.map((field) =>
     columnHelper.accessor((referenceDataEntry) => rawValue(referenceDataEntry, field), {
