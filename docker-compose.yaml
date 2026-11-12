@@ -1,0 +1,23 @@
+name: ceeds-backend
+
+include:
+  - backend/env/docker-compose.yaml
+
+services:
+  backend:
+    image: ${S3_IMAGE:-ghcr.io/eddie-energy/european-reference-data-registry:latest}
+    ports:
+      - "8080:8080"
+    env_file:
+      - backend/env/.env
+    environment:
+      KEYCLOAK_HOST: http://localhost:8081
+      KEYCLOAK_INTERNAL_HOST: http://keycloak:8080
+      KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/ceeds/protocol/openid-connect/token
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8081/realms/ceeds
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/ceeds/protocol/openid-connect/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak-bootstrap:
+        condition: service_completed_successfully

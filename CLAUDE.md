@@ -65,7 +65,9 @@ nation.
 ## Authentication & authorization
 
 Keycloak runs in the same compose file on **port 8081**, realm `ceeds`, public client `ceeds-frontend`,
-seeded dev user `ceeds`/`ceeds`. The realm is provisioned from `backend/env/keycloak/ceeds-realm.json`
+seeded dev user `ceeds`/`ceeds`. The browser reaches Keycloak via `keycloak.host`; server-side admin
+calls use `keycloak.internal-host` (defaults to `keycloak.host`, set to `http://keycloak:8080` in the root
+`docker-compose.yaml`). The realm is provisioned from `backend/env/keycloak/ceeds-realm.json`
 via `start-dev --import-realm`, so it is re-imported on every container start — change the realm by
 editing that file, not in the admin console. Self-registration is on and the registration form is
 reduced to username + password.
@@ -147,6 +149,7 @@ Gradle** (Settings → Build Tools → Gradle → "Build and run using: Gradle")
 ./gradlew :api:generateServerApi    # regenerate Java API types from the spec
 
 docker compose -f backend/env/docker-compose.yaml up -d   # postgres (:5440) + keycloak (:8081)
+docker compose up -d                                      # full stack incl. published backend image (:8080), see docs/running-with-docker.md
 ```
 
 - Health: http://localhost:8080/actuator/health · Swagger UI: http://localhost:8080/swagger-ui.html

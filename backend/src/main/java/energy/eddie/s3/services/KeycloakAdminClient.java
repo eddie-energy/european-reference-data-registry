@@ -40,7 +40,7 @@ public class KeycloakAdminClient {
 
     public KeycloakAdminClient(
             ObjectMapper mapper,
-            @Value("${keycloak.host}") String host,
+            @Value("${keycloak.internal-host:${keycloak.host}}") String host,
             @Value("${keycloak.realm}") String realm,
             @Value("${keycloak.token-uri}") String tokenUri,
             @Value("${keycloak.directory-client-id:ceeds-directory}") String clientId,
