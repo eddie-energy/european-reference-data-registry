@@ -2,6 +2,15 @@
 
 S3 federation service. Java 21 / Spring Boot backend.
 
+## Quick start (Docker)
+
+```sh
+docker login ghcr.io        # once; GitHub token with read:packages
+docker compose up -d
+```
+
+Open http://localhost:8080 and sign in with `ceeds` / `ceeds`. Full guide: [docs/running-with-docker.md](docs/running-with-docker.md).
+
 ## Stack
 - Java 21, Spring Boot 3.5 (web, data-jpa, actuator)
 - PostgreSQL + Flyway migrations
