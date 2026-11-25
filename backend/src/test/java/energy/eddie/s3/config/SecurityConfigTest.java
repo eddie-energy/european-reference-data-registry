@@ -152,6 +152,30 @@ class SecurityConfigTest {
     }
 
     @Test
+    void versionS2LinkUpdate_requiresOperationalEntity() throws Exception {
+        var path = "/api/reference-data-objects/{id}/versions/{versionId}/s2-link";
+        var versionId = UUID.randomUUID();
+        mockMvc.perform(put(path, ID, versionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        for (var role : List.of(CeedsRole.NDSF, CeedsRole.COORDINATING_NDSF, CeedsRole.PARTICIPANT)) {
+            mockMvc.perform(put(path, ID, versionId)
+                            .with(jwt().authorities(new SimpleGrantedAuthority(role.authority())))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        mockMvc.perform(put(path, ID, versionId)
+                        .with(jwt().authorities(new SimpleGrantedAuthority(CeedsRole.OPERATIONAL_ENTITY.authority())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"s2Link\":\"https://s2.example.org/model\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void buildingBlockUpdate_requiresOperationalEntity() throws Exception {
         mockMvc.perform(put("/api/reference-data-objects/{id}/building-block", ID)
                         .contentType(MediaType.APPLICATION_JSON)

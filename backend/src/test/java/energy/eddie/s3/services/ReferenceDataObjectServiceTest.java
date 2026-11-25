@@ -16,6 +16,7 @@ import energy.eddie.s3.generated.model.ReferenceDataObjectDetail;
 import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
+import energy.eddie.s3.generated.model.UpdateVersionS2LinkRequest;
 import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.DataType;
@@ -201,6 +202,80 @@ class ReferenceDataObjectServiceTest {
         assertThat(captor.getValue().getFields().get(0).getOptions())
                 .extracting(EnumOption::getName)
                 .containsExactly("DSO");
+    }
+
+    @Test
+    void createVersion_copiesS2Link() {
+        var id = UUID.randomUUID();
+        var rdo = rdoWithId(id);
+        var latest = versionWithId(rdo, UUID.randomUUID(), 1, PublishState.PUBLISHED);
+        latest.setS2Link("https://s2.example.org/permission-administrator");
+        when(referenceDataObjectRepository.findById(id)).thenReturn(Optional.of(rdo));
+        when(versionRepository.findFirstByReferenceDataObjectIdOrderByVersionCodeDesc(id))
+                .thenReturn(Optional.of(latest));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.createVersion(id);
+
+        var captor = ArgumentCaptor.forClass(ReferenceDataObjectVersion.class);
+        verify(versionRepository).save(captor.capture());
+        assertThat(captor.getValue().getS2Link()).isEqualTo("https://s2.example.org/permission-administrator");
+    }
+
+    @Test
+    void updateVersionS2Link_onDraft_setsLink() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.updateVersionS2Link(id, versionId,
+                new UpdateVersionS2LinkRequest().s2Link("https://s2.example.org/model"));
+
+        assertThat(version.getS2Link()).isEqualTo("https://s2.example.org/model");
+    }
+
+    @Test
+    void updateVersionS2Link_withoutLink_clearsLink() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.DRAFT);
+        version.setS2Link("https://s2.example.org/model");
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(versionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toVersionDetail(any())).thenReturn(new ReferenceDataObjectVersionDetail());
+
+        service.updateVersionS2Link(id, versionId, new UpdateVersionS2LinkRequest());
+
+        assertThat(version.getS2Link()).isNull();
+    }
+
+    @Test
+    void updateVersionS2Link_onPublished_throwsConflict() {
+        var id = UUID.randomUUID();
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(id), versionId, 1, PublishState.PUBLISHED);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.updateVersionS2Link(id, versionId,
+                new UpdateVersionS2LinkRequest().s2Link("https://s2.example.org/model")))
+                .isInstanceOf(ConflictException.class);
+        assertThat(version.getS2Link()).isNull();
+        verify(versionRepository, never()).save(any());
+    }
+
+    @Test
+    void updateVersionS2Link_wrongRdo_throwsNotFound() {
+        var versionId = UUID.randomUUID();
+        var version = versionWithId(rdoWithId(UUID.randomUUID()), versionId, 1, PublishState.DRAFT);
+        when(versionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        assertThatThrownBy(() -> service.updateVersionS2Link(UUID.randomUUID(), versionId,
+                new UpdateVersionS2LinkRequest()))
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test

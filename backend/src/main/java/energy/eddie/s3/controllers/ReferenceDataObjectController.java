@@ -10,6 +10,7 @@ import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
 import energy.eddie.s3.generated.model.ReorderFieldsRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectBuildingBlockRequest;
+import energy.eddie.s3.generated.model.UpdateVersionS2LinkRequest;
 import energy.eddie.s3.services.ReferenceDataObjectService;
 import java.util.List;
 import java.util.UUID;
@@ -68,6 +69,12 @@ public class ReferenceDataObjectController implements ReferenceDataApi {
     @Override
     public ResponseEntity<ReferenceDataObjectVersionDetail> publishVersion(UUID id, UUID versionId) {
         return ResponseEntity.ok(service.publishVersion(id, versionId));
+    }
+
+    @Override
+    public ResponseEntity<ReferenceDataObjectVersionDetail> updateVersionS2Link(
+            UUID id, UUID versionId, UpdateVersionS2LinkRequest request) {
+        return ResponseEntity.ok(service.updateVersionS2Link(id, versionId, request));
     }
 
     @Override

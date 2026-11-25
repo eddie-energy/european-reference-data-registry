@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,6 +45,11 @@ public class ReferenceDataObjectVersion {
 
     @Column(nullable = false, updatable = false)
     protected Instant createdAt;
+
+    @Setter
+    @Nullable
+    @Column(name = "s2_link")
+    protected String s2Link;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reference_data_object_id", referencedColumnName = "id", nullable = false, updatable = false)

@@ -446,7 +446,7 @@ paths:
     post:
       tags: [ ReferenceData ]
       operationId: createVersion
-      summary: Create a new version linking all fields of the latest version
+      summary: Create a new version linking all fields and the S2 link of the latest version
       parameters:
         - $ref: '#/components/parameters/ReferenceDataObjectId'
       responses:
@@ -474,6 +474,38 @@ paths:
       responses:
         '204':
           description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /reference-data-objects/{id}/versions/{versionId}/s2-link:
+    put:
+      tags: [ ReferenceData ]
+      operationId: updateVersionS2Link
+      summary: Set or clear the S2 message model link of a draft version
+      parameters:
+        - $ref: '#/components/parameters/ReferenceDataObjectId'
+        - $ref: '#/components/parameters/VersionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVersionS2LinkRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceDataObjectVersionDetail'
+        '400':
+          description: The link is not an http(s) URL
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1114,6 +1146,16 @@ components:
           nullable: true
           description: Omit or set to null to clear the selection.
 
+    UpdateVersionS2LinkRequest:
+      type: object
+      properties:
+        s2Link:
+          type: string
+          nullable: true
+          maxLength: 2048
+          pattern: '^https?://\S+$'
+          description: Absolute http(s) URL of the S2 message model. Omit or set to null to clear the link.
+
     FunctionalBuildingBlock:
       type: string
       enum:
@@ -1253,6 +1295,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        s2Link:
+          type: string
+          nullable: true
+          description: Link to the S2 message model this version corresponds to. Carried over to new versions.
         fields:
           type: array
           items:

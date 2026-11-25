@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   referenceDataObject,
@@ -15,6 +15,7 @@ import {
   reorderFields,
   updateReferenceDataObjectCategory,
   updateReferenceDataObjectBuildingBlock,
+  updateVersionS2Link,
 } from '@/api'
 import FieldForm from '@/components/FieldForm.vue'
 import ButtonLink from '@/components/ButtonLink.vue'
@@ -55,6 +56,7 @@ const draftHasChanges = computed(() => {
   const draftFieldIds = draftVersion.value.fields.map((field) => field.id)
   const previousFieldIds = previousVersion.value.fields.map((field) => field.id)
   return (
+    (draftVersion.value.s2Link ?? null) !== (previousVersion.value.s2Link ?? null) ||
     draftFieldIds.length !== previousFieldIds.length ||
     draftFieldIds.some((fieldId, index) => fieldId !== previousFieldIds[index])
   )
@@ -116,6 +118,38 @@ const setBuildingBlock = async (
     success('Building block updated')
   } catch {
     danger('Failed to update building block')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const s2LinkDraft = ref('')
+watch(
+  () => draftVersion.value?.s2Link,
+  (link) => {
+    s2LinkDraft.value = link ?? ''
+  },
+  { immediate: true },
+)
+
+const s2LinkUnchanged = computed(
+  () => s2LinkDraft.value.trim() === (draftVersion.value?.s2Link ?? ''),
+)
+
+const saveS2Link = async () => {
+  if (!draftVersion.value) return
+  const s2Link = s2LinkDraft.value.trim() || null
+  submitting.value = true
+  try {
+    const { data, error } = await updateVersionS2Link(id, draftVersion.value.id, { s2Link })
+    if (!data) {
+      danger(error?.message ?? 'Failed to update S2 link — use an http(s) URL')
+      return
+    }
+    success(s2Link ? 'S2 link updated' : 'S2 link removed')
+    await load()
+  } catch {
+    danger('Failed to update S2 link')
   } finally {
     submitting.value = false
   }
@@ -376,9 +410,32 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
 
       <FieldForm :id :version-id="draftVersion.id" @created="load" />
 
+      <form v-if="isOperationalEntity" class="s2-link-form" @submit.prevent="saveS2Link">
+        <label>
+          S2 message model link (optional)
+          <input
+            v-model="s2LinkDraft"
+            type="url"
+            placeholder="https://"
+            pattern="https?://\S+"
+            maxlength="2048"
+            :disabled="submitting"
+          />
+        </label>
+        <ButtonLink
+          component="button"
+          type="submit"
+          buttonStyle="secondary"
+          size="compact"
+          :disabled="submitting || s2LinkUnchanged"
+        >
+          Save S2 link
+        </ButtonLink>
+      </form>
+
       <p v-if="isOperationalEntity && !draftHasChanges" class="empty">
-        No changes from version {{ previousVersion?.versionCode }} — add, remove or reorder a field
-        to publish.
+        No changes from version {{ previousVersion?.versionCode }} — add, remove or reorder a field,
+        or change the S2 link, to publish.
       </p>
 
       <div class="draft-actions">
@@ -413,7 +470,7 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
         :disabled="submitting"
         @click="startNewVersion"
       >
-        Start new version to add fields
+        Start new version
       </ButtonLink>
     </template>
     <p v-else class="empty">
@@ -448,6 +505,21 @@ const sampleValue = (field: components['schemas']['FieldDto']): string => {
 .preview-label {
   font-style: normal;
   font-size: 0.75rem;
+}
+
+.s2-link-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--spacing-md);
+}
+
+.s2-link-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  font-size: 0.9rem;
+  flex: 1 1 24rem;
 }
 
 .draft-actions {
