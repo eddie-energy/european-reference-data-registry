@@ -11,6 +11,7 @@ import energy.eddie.s3.generated.model.ReferenceDataObjectVersionDetail;
 import energy.eddie.s3.generated.model.ReplaceVersionFieldsRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectCategoryRequest;
 import energy.eddie.s3.generated.model.UpdateReferenceDataObjectBuildingBlockRequest;
+import energy.eddie.s3.generated.model.UpdateVersionS2LinkRequest;
 import energy.eddie.s3.generated.model.VersionFieldRequest;
 import energy.eddie.s3.mappers.ReferenceDataObjectMapper;
 import energy.eddie.s3.models.referencedata.*;
@@ -175,6 +176,18 @@ public class ReferenceDataObjectService {
                 .orElseThrow(() -> new NotFoundException("No existing version found for reference data object " + id));
         var version = new ReferenceDataObjectVersion(rdo, latest.getVersionCode() + 1, PublishState.DRAFT);
         version.getFields().addAll(latest.getFields());
+        version.setS2Link(latest.getS2Link());
+        return mapper.toVersionDetail(versionRepository.save(version));
+    }
+
+    @Transactional
+    public ReferenceDataObjectVersionDetail updateVersionS2Link(
+            UUID id, UUID versionId, UpdateVersionS2LinkRequest request) {
+        var version = findVersion(id, versionId);
+        if (version.getPublishState() == PublishState.PUBLISHED) {
+            throw new ConflictException("Cannot change the S2 link of a published version");
+        }
+        version.setS2Link(request.getS2Link());
         return mapper.toVersionDetail(versionRepository.save(version));
     }
 

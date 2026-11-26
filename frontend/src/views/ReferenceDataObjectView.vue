@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { isNdsf, maintainableNations, userRole } from '@/stores/userInfo'
 import ReferenceDataEntryTable from '@/components/ReferenceDataEntryTable.vue'
 import ReferenceDataObjectEditor from '@/components/ReferenceDataObjectEditor.vue'
+import ButtonLink from '@/components/ButtonLink.vue'
 import { functionalBuildingBlockLabels } from '@/constants/functionalBuildingBlocks'
 
 const { id } = defineProps<{ id: string }>()
@@ -152,6 +153,18 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
       </nav>
 
       <section v-if="activeTab === 'browse'">
+        <ButtonLink
+          v-if="browseVersion?.s2Link"
+          component="a"
+          :href="browseVersion.s2Link"
+          target="_blank"
+          rel="noopener noreferrer"
+          buttonStyle="secondary"
+          size="compact"
+          class="s2-link"
+        >
+          S2 message model
+        </ButtonLink>
         <div v-if="mayEditVersions && visibleVersions.length > 1" class="version-switch">
           <label for="versionSelect">Version</label>
           <select id="versionSelect" v-model.number="versionSwitchModel">
@@ -246,6 +259,12 @@ watch([activeTab, selectedVersionCode], ([tab, version]) => {
   background-color: var(--lavender);
   color: var(--light);
   font-weight: 600;
+}
+
+.s2-link {
+  width: fit-content;
+  margin-bottom: var(--spacing-lg);
+  text-decoration: none;
 }
 
 .version-switch {

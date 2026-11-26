@@ -110,6 +110,21 @@ export async function publishVersion(
   })
 }
 
+export async function updateVersionS2Link(
+  id: components['parameters']['ReferenceDataObjectId'],
+  versionId: components['parameters']['VersionId'],
+  body: components['schemas']['UpdateVersionS2LinkRequest'],
+): Promise<{
+  data?: components['schemas']['ReferenceDataObjectVersionDetail']
+  error?: components['schemas']['ErrorResponse']
+  response: Response
+}> {
+  return (await fetch()).PUT('/reference-data-objects/{id}/versions/{versionId}/s2-link', {
+    params: { path: { id, versionId } },
+    body,
+  })
+}
+
 export async function deleteVersion(
   id: components['parameters']['ReferenceDataObjectId'],
   versionId: components['parameters']['VersionId'],

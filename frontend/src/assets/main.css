@@ -158,6 +158,7 @@ svg {
 /* Global form primitives */
 input[type='text'],
 input[type='number'],
+input[type='url'],
 input:not([type]),
 select,
 textarea {
@@ -181,6 +182,7 @@ textarea {
 
 input[type='text']:focus-visible,
 input[type='number']:focus-visible,
+input[type='url']:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
