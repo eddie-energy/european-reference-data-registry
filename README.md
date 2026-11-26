@@ -1,6 +1,6 @@
 # S3 · European Reference Data Registry
 
-## Introduction
+## Motivation
 
 [INSIEME](https://insieme.energy/) is working towards a **Common European Energy Data Space (CEEDS)**: a federated data space that connects energy data platforms across Europe and enables secure, interoperable data sharing.
 
