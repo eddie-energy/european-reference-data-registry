@@ -1,6 +1,20 @@
-# ceeds-backend
+# S3 · European Reference Data Registry
 
-S3 federation service. Java 21 / Spring Boot backend.
+## Motivation
+
+[INSIEME](https://insieme.energy/) is working towards a **Common European Energy Data Space (CEEDS)**: a federated data space that connects energy data platforms across Europe and enables secure, interoperable data sharing.
+
+**Reference data** can be any shared information that participants and applications need to access across CEEDS. Today, some of this information may be kept in spreadsheets or other isolated environments, making it difficult to find, maintain and use consistently.
+
+The **European Reference Data Registry (S3)** provides a common place to manage, access and track this data, with an API that makes it available across the data space. It is designed to accommodate new types of reference data as needs evolve. For example, S3 could host a list of data space middleware operators or records of which organisations act as Permission Administrators in each country.
+
+National Data Space Facilitators (NDSFs) collect and maintain their reference data and certify its correctness. S3 supports the consistent exchange of this information across countries through standardised interfaces, including the use of a Common Information Model.
+
+**Versioning is a core principle of S3.** It gives participants and applications a stable reference: they can rely on the data associated with a specific version even as newer versions are published. This supports reproducible, predictable automation while allowing reference data to evolve over time.
+
+This repository contains the S3 service and its web interface for managing and accessing European and national reference data.
+
+> **Explore further:** [S3 architecture](https://architecture.insieme.energy/meta-level-operating-services/european-reference-data-registry/european-reference-data-registry.html) · [INSIEME](https://insieme.energy/)
 
 ## Quick start (Docker)
 
